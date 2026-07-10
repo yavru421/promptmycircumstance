@@ -3,6 +3,7 @@
 @using PromptMyCircumstance.Services
 @inject BalancedScoringEngine Engine
 @inject ChallengeLibrary Library
+@inject HttpClient Http
 
 <div class="crucible-arena dark-mode">
     @if (Challenges != null && Challenges.Any())
@@ -41,12 +42,17 @@
                 <h3>Operator Input (Your Prompt)</h3>
                 <textarea @bind="UserPrompt" placeholder="Type prompt to process telemetry..."></textarea>
                 
-                <h3>Simulated Model Output</h3>
-                <textarea @bind="SimulatedOutput" placeholder="Type the output your prompt would produce..."></textarea>
-
                 <button class="submit-btn" @onclick="RunLocalEvaluationLoop" disabled="@IsRunning">
-                    @(IsRunning ? "Executing..." : "Run Analysis Pipeline")
+                    @(IsRunning ? "Executing AI Pipeline..." : "Run Analysis Pipeline")
                 </button>
+
+                @if (!string.IsNullOrEmpty(ActualAiOutput))
+                {
+                    <h3 style="margin-top:20px; color:var(--neon-amber);">Live AI Completion Result</h3>
+                    <div class="gold-box" style="border-left-color: var(--neon-blue);">
+                        @ActualAiOutput
+                    </div>
+                }
             </div>
 
             <!-- Right: Scoreboard -->

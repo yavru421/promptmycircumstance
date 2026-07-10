@@ -1,78 +1,90 @@
 using System;
-using System.Runtime.InteropServices.JavaScript;
-using Microsoft.JSInterop;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using PromptMyCircumstance.Models;
+using PromptMyCircumstance.Services;
+using Microsoft.AspNetCore.Components;
 
 namespace PromptMyCircumstance.Pages
 {
-    public partial class Index : IDisposable
+    public partial class Index : ComponentBase
     {
-        private int activeScene = 1;
-        private bool isUploading = false;
-        private int uploadProgress = 0;
-        private bool isAttacked = false;
-        private string pourState = "None"; // None, SaaS, ZLA, Complete
-        private bool jigDissolved = false;
-        private bool celebrateActive = false;
+        private List<ChallengePayload> Challenges = new();
+        private int CurrentIndex = 0;
+        private string UserPrompt = string.Empty;
+        private string SimulatedOutput = string.Empty;
 
-        [JSImport("triggerConfetti", "zla-interop")]
-        internal static partial void TriggerConfettiJS();
+        private EvaluationResult Result;
+        private int AnimationPercentage = 0;
+        private List<string> ActivePhaseLogs = new();
+        private bool IsRunning = false;
 
-        private async Task SimulateUpload()
+        protected override void OnInitialized()
         {
-            if (isUploading) return;
-            isUploading = true;
-            uploadProgress = 0;
-            StateHasChanged();
+            Challenges = Library.GenerateChallenges();
+            ResetState();
+        }
+
+        private void NextChallenge()
+        {
+            if (CurrentIndex < Challenges.Count - 1)
+            {
+                CurrentIndex++;
+                ResetState();
+            }
+        }
+
+        private void PrevChallenge()
+        {
+            if (CurrentIndex > 0)
+            {
+                CurrentIndex--;
+                ResetState();
+            }
+        }
+
+        private void ResetState()
+        {
+            UserPrompt = string.Empty;
+            SimulatedOutput = string.Empty;
+            Result = null;
+            AnimationPercentage = 0;
+            ActivePhaseLogs.Clear();
+            IsRunning = false;
+        }
+
+        private async Task RunLocalEvaluationLoop()
+        {
+            if (IsRunning) return;
+            IsRunning = true;
+            ActivePhaseLogs.Clear();
+            AnimationPercentage = 0;
             
-            while (uploadProgress < 100)
+            var current = Challenges[CurrentIndex];
+            
+            var payload = current.EvaluationSchema;
+            payload.EvaluatorInputs.RawPromptText = UserPrompt;
+            payload.EvaluatorInputs.CapturedOutputString = SimulatedOutput;
+            // The reference is already set in the seeded schema
+
+            Result = Engine.Evaluate(payload);
+
+            foreach (var step in Result.AnimationTimeline)
             {
-                await Task.Delay(200);
-                uploadProgress += 10;
+                AnimationPercentage = step.CompletionPercentage;
+                ActivePhaseLogs.Add($"[{step.Phase}] {step.LogMessage}");
                 StateHasChanged();
+                await Task.Delay(400); 
             }
-            isUploading = false;
-            isAttacked = true;
-            StateHasChanged();
+
+            IsRunning = false;
         }
 
-        private void NextScene()
+        private string GetTierClass(double score)
         {
-            if (activeScene < 5)
-            {
-                activeScene++;
-                StateHasChanged();
-            }
-        }
-
-        private void SetPourState(string state)
-        {
-            pourState = state;
-            if (state == "ZLA")
-            {
-                jigDissolved = true;
-            }
-            StateHasChanged();
-        }
-
-        private void Celebrate()
-        {
-            celebrateActive = true;
-            try
-            {
-                TriggerConfettiJS();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Confetti Trigger Error: {ex.Message}");
-            }
-            StateHasChanged();
-        }
-
-        public void Dispose()
-        {
-            // Clean up resources if necessary
+            if (score >= 90) return "neon-matrix-green";
+            if (score >= 70) return "neon-text-blue";
+            return "neon-text-red";
         }
     }
 }
-

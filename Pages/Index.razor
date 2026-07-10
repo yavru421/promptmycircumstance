@@ -1,97 +1,94 @@
 @page "/"
-@using System.Runtime.InteropServices.JavaScript
-@implements IDisposable
+@using PromptMyCircumstance.Models
+@using PromptMyCircumstance.Services
+@inject BalancedScoringEngine Engine
+@inject ChallengeLibrary Library
 
-<div class="pipeline-container">
-    @if (activeScene == 1)
+<div class="crucible-arena dark-mode">
+    @if (Challenges != null && Challenges.Any())
     {
-        <div class="scene scene-1">
-            <div class="glass-card">
-                <h1 class="neon-text-red">The Hook: Sluggish SaaS Monument</h1>
-                <div class="attack-fortress">Giant Locked Fortress</div>
-                <button class="slow-upload-btn" @onclick="SimulateUpload" disabled="@isUploading">
-                    @(isUploading ? $"Uploading... {uploadProgress}%" : "Simulate SaaS Upload")
+        var current = Challenges[CurrentIndex];
+        
+        <div class="crucible-header">
+            <h1 class="neon-text-blue">The Prompt Crucible</h1>
+            <div class="challenge-nav">
+                <button @onclick="PrevChallenge" disabled="@(CurrentIndex == 0)">&#9664; Prev</button>
+                <span>Challenge @(CurrentIndex + 1) / @Challenges.Count</span>
+                <button @onclick="NextChallenge" disabled="@(CurrentIndex == Challenges.Count - 1)">Next &#9654;</button>
+            </div>
+        </div>
+
+        <div class="crucible-grid">
+            <!-- Left: Challenge Telemetry -->
+            <div class="panel challenge-panel">
+                <h2>@current.Title</h2>
+                <div class="badge-row">
+                    <span class="badge domain">@current.DomainTag</span>
+                    <span class="badge difficulty">@(new string('★', current.DifficultyStars))</span>
+                </div>
+                <h3>Raw Telemetry Dump</h3>
+                <div class="telemetry-box">
+                    @current.RawTelemetryDump
+                </div>
+                <h3>Target Gold Standard</h3>
+                <div class="gold-box">
+                    @current.ReferenceGoldStandardAnswer
+                </div>
+            </div>
+
+            <!-- Center: Operator Workspace -->
+            <div class="panel operator-panel">
+                <h3>Operator Input (Your Prompt)</h3>
+                <textarea @bind="UserPrompt" placeholder="Type prompt to process telemetry..."></textarea>
+                
+                <h3>Simulated Model Output</h3>
+                <textarea @bind="SimulatedOutput" placeholder="Type the output your prompt would produce..."></textarea>
+
+                <button class="submit-btn" @onclick="RunLocalEvaluationLoop" disabled="@IsRunning">
+                    @(IsRunning ? "Executing..." : "Run Analysis Pipeline")
                 </button>
-                @if(uploadProgress >= 100)
+            </div>
+
+            <!-- Right: Scoreboard -->
+            <div class="panel scoreboard-panel">
+                <h3>Evaluation Matrix</h3>
+                
+                @if (Result != null)
                 {
-                    <button class="btn-next" @onclick="NextScene">Next Scene</button>
+                    <div class="score-summary animate-fade">
+                        <h2 class="@GetTierClass(Result.TotalScore)">@Result.OperatorTier</h2>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: @(AnimationPercentage)%"></div>
+                        </div>
+                        <p class="cyber-feedback">@Result.TierFeedback</p>
+                        
+                        <div class="metric-breakdown">
+                            @foreach (var metric in Result.Metrics)
+                            {
+                                <div class="metric-row">
+                                    <span>@metric.CriteriaName</span>
+                                    <span>@metric.PointsEarned.ToString("F1") / @metric.MaxPoints</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
                 }
-            </div>
-        </div>
-    }
-    else if (activeScene == 2)
-    {
-        <div class="scene scene-2">
-            <div class="glass-card">
-                <h1 class="neon-text-red siren-alert">The Attack Surface</h1>
-                <div class="attack-fortress siren-alert">Broken Fortress</div>
-                <p>Compliance Warning: Database Breach!</p>
-                <button class="btn-next" @onclick="NextScene">Shift Paradigm</button>
-            </div>
-        </div>
-    }
-    else if (activeScene == 3)
-    {
-        <div class="scene scene-3">
-            <div class="glass-card">
-                <h1 class="neon-text-blue">The Paradigm Shift</h1>
-                <div class="wireframe-jig">
-                    <p>Zero-Liability Architecture Blueprint</p>
+
+                <div class="terminal-feed">
+                    @foreach (var log in ActivePhaseLogs)
+                    {
+                        <div class="terminal-line">@log</div>
+                    }
+                    @if (ActivePhaseLogs.Count == 0 && Result == null)
+                    {
+                        <div class="terminal-line">Awaiting telemetry payload...</div>
+                    }
                 </div>
-                <button class="btn-next" @onclick="NextScene">See it in Action</button>
             </div>
         </div>
     }
-    else if (activeScene == 4)
+    else
     {
-        <div class="scene scene-4">
-            <div class="glass-card">
-                <h1 class="neon-text-green">Zero Data Custody in Action</h1>
-                <div class="data-pour-container">
-                    <p>Pour State: @pourState</p>
-                    <button @onclick='() => SetPourState("ZLA")'>Pour Data (Local)</button>
-                    <button @onclick='() => SetPourState("Complete")'>Finish Pour</button>
-                </div>
-                <button class="btn-next" @onclick="NextScene">Generate Output</button>
-            </div>
-        </div>
-    }
-    else if (activeScene == 5)
-    {
-        <div class="scene scene-5">
-            <div class="glass-card">
-                <h1 class="neon-text-blue">The Absolute Output</h1>
-                <div class="dashboard">
-                    <p>Local processing complete. 100% Private PDF generated.</p>
-                </div>
-                <button class="celebration-btn" @onclick="Celebrate">Celebrate!</button>
-                @if(celebrateActive)
-                {
-                    <p class="neon-text-green">🎉 Confetti Deployed 🎉</p>
-                }
-            </div>
-        </div>
+        <div class="loading-state">Loading Challenge Matrix...</div>
     }
 </div>
-
-@code {
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            await InitializeJavaScriptAsync();
-        }
-    }
-
-    private async Task InitializeJavaScriptAsync()
-    {
-        try
-        {
-            await JSHost.ImportAsync("zla-interop", "../js/zla-interop.js");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"JS Init Error: {ex.Message}");
-        }
-    }
-}

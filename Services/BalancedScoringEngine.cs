@@ -34,6 +34,12 @@ namespace PromptMyCircumstance.Services
 
         [JsonPropertyName("reference_gold_standard_answer")]
         public string ReferenceGoldStandardAnswer { get; set; } = string.Empty;
+
+        [JsonPropertyName("ai_semantic_score")]
+        public double AiSemanticScore { get; set; }
+
+        [JsonPropertyName("ai_failure_analysis")]
+        public string AiFailureAnalysis { get; set; } = string.Empty;
     }
 
     public class BalancedCriteriaWeights
@@ -388,80 +394,20 @@ namespace PromptMyCircumstance.Services
             var metric = new MetricScore
             {
                 CriteriaName = "First-Shot Output Compliance",
-                // BUG FIX: was First_Shot_Output_Compliance, correct property is FirstShotOutputCompliance
                 MaxPoints = payload.BalancedCriteriaWeights.FirstShotOutputCompliance.WeightPercentage
             };
 
-            AddProgressStep(result, "Validating Output Compliance", progress += 25, "Running client-side semantic similarity and structural regex rules...");
+            AddProgressStep(result, "Validating Output Compliance", progress += 25, "Evaluating AI Agent evaluation metrics and gold standard scaling...");
 
-            double points = 0;
-            string capturedOutput = payload.EvaluatorInputs.CapturedOutputString;
-            string goldStandard = payload.EvaluatorInputs.ReferenceGoldStandardAnswer;
-            string targetFormat = payload.BalancedCriteriaWeights.FirstShotOutputCompliance.TargetFormatStandard;
+            double score = payload.EvaluatorInputs.AiSemanticScore;
+            double points = score * metric.MaxPoints;
 
-            bool structuralPass = false;
-            if (targetFormat == "markdown_list")
-            {
-                var listMatch = Regex.Match(capturedOutput, @"(?m)^\s*[-*+\d\.]+\s+");
-                if (listMatch.Success)
-                {
-                    structuralPass = true;
-                    points += 10.0;
-                    metric.ExecutionLogs.Add("PASS: Captured completion adheres to required markdown bullet/numbered list syntax.");
-                }
-            }
-            else if (targetFormat == "plain_text" && !string.IsNullOrWhiteSpace(capturedOutput))
-            {
-                structuralPass = true;
-                points += 10.0;
-                metric.ExecutionLogs.Add("PASS: Structural plaintext output standard verified.");
-            }
-            else if (targetFormat == "raw_json")
-            {
-                try
-                {
-                    JsonDocument.Parse(capturedOutput);
-                    structuralPass = true;
-                    points += 10.0;
-                    metric.ExecutionLogs.Add("PASS: Captured output is valid JSON structure.");
-                }
-                catch
-                {
-                    metric.ExecutionLogs.Add("FAIL: Output is not valid JSON.");
-                }
-            }
+            metric.ExecutionLogs.Add($"AI Evaluator Scale: {score:F2} / 1.00");
+            metric.ExecutionLogs.Add($"Calculated Score: {points:F1} / {metric.MaxPoints}");
 
-            if (!structuralPass)
+            if (!string.IsNullOrWhiteSpace(payload.EvaluatorInputs.AiFailureAnalysis))
             {
-                metric.ExecutionLogs.Add($"FAIL: Completion string failed compliance checking for target format '{targetFormat}'.");
-            }
-
-            bool containsVenting = EmotionalVentingKeywords.Any(k => capturedOutput.Contains(k, StringComparison.OrdinalIgnoreCase));
-            if (!containsVenting)
-            {
-                points += 10.0;
-                metric.ExecutionLogs.Add("PASS: Output successfully stripped all raw telemetry noise and emotional venting.");
-            }
-            else
-            {
-                metric.ExecutionLogs.Add("FAIL: Output contains residual emotional venting keywords from raw dataset.");
-            }
-
-            double jaccardSimilarity = ComputeJaccardSimilarity(capturedOutput, goldStandard);
-            double targetSimilarity = payload.ProgrammaticValidationRules.SemanticMatchThreshold;
-
-            metric.ExecutionLogs.Add($"Semantic Correlation: {jaccardSimilarity:F3} vs target {targetSimilarity:F2}.");
-
-            if (jaccardSimilarity >= targetSimilarity)
-            {
-                points += 5.0;
-                metric.ExecutionLogs.Add("PASS: Output similarity sits inside validation threshold.");
-            }
-            else
-            {
-                double proportionalPoints = (jaccardSimilarity / targetSimilarity) * 5.0;
-                points += proportionalPoints;
-                metric.ExecutionLogs.Add($"WARNING: Output drifted from Gold Standard. Scaled points: {proportionalPoints:F1}/5.");
+                metric.ExecutionLogs.Add($"Judge Feedback: {payload.EvaluatorInputs.AiFailureAnalysis}");
             }
 
             metric.PointsEarned = points;

@@ -12,17 +12,26 @@ namespace PromptMyCircumstance.Pages
 {
     public class AiRequestPayload
     {
-        [JsonPropertyName("systemPrompt")]
-        public string SystemPrompt { get; set; } = string.Empty;
-
         [JsonPropertyName("userPrompt")]
         public string UserPrompt { get; set; } = string.Empty;
+
+        [JsonPropertyName("rawTelemetry")]
+        public string RawTelemetry { get; set; } = string.Empty;
+
+        [JsonPropertyName("goldStandard")]
+        public string GoldStandard { get; set; } = string.Empty;
     }
 
     public class AiResponsePayload
     {
-        [JsonPropertyName("result")]
-        public string Result { get; set; } = string.Empty;
+        [JsonPropertyName("execution_result")]
+        public string ExecutionResult { get; set; } = string.Empty;
+
+        [JsonPropertyName("semantic_alignment_score")]
+        public double SemanticAlignmentScore { get; set; }
+
+        [JsonPropertyName("failure_analysis")]
+        public string FailureAnalysis { get; set; } = string.Empty;
 
         [JsonPropertyName("error")]
         public string Error { get; set; } = string.Empty;
@@ -85,15 +94,16 @@ namespace PromptMyCircumstance.Pages
             
             var current = Challenges[CurrentIndex];
             
-            ActivePhaseLogs.Add("[API] Dispatching payload to Cloudflare AI Worker (Llama-3)...");
+            ActivePhaseLogs.Add("[API] Dispatching payload to Cloudflare AI Worker (Decoupled Pipeline)...");
             StateHasChanged();
 
             try
             {
                 var req = new AiRequestPayload 
                 { 
-                    SystemPrompt = $"You are processing raw data. Strict instructions: {UserPrompt}",
-                    UserPrompt = current.RawTelemetryDump 
+                    UserPrompt = UserPrompt,
+                    RawTelemetry = current.RawTelemetryDump,
+                    GoldStandard = current.ReferenceGoldStandardAnswer
                 };
 
                 var res = await Http.PostAsJsonAsync("/api/generate", req);
@@ -106,10 +116,18 @@ namespace PromptMyCircumstance.Pages
                     return;
                 }
 
-                ActualAiOutput = aiData?.Result ?? "";
-                ActivePhaseLogs.Add("[API] Success. Captured completion from model.");
+                ActualAiOutput = aiData?.ExecutionResult ?? "";
+                ActivePhaseLogs.Add("[API] Success. Decoupled execution complete.");
                 StateHasChanged();
                 await Task.Delay(500);
+
+                var payload = current.EvaluationSchema;
+                payload.EvaluatorInputs.RawPromptText = UserPrompt;
+                payload.EvaluatorInputs.CapturedOutputString = ActualAiOutput;
+                payload.EvaluatorInputs.AiSemanticScore = aiData?.SemanticAlignmentScore ?? 0.0;
+                payload.EvaluatorInputs.AiFailureAnalysis = aiData?.FailureAnalysis ?? "";
+
+                Result = Engine.Evaluate(payload);
             }
             catch (Exception ex)
             {
@@ -117,12 +135,6 @@ namespace PromptMyCircumstance.Pages
                 IsRunning = false;
                 return;
             }
-            
-            var payload = current.EvaluationSchema;
-            payload.EvaluatorInputs.RawPromptText = UserPrompt;
-            payload.EvaluatorInputs.CapturedOutputString = ActualAiOutput;
-
-            Result = Engine.Evaluate(payload);
 
             foreach (var step in Result.AnimationTimeline)
             {

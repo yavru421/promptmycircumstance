@@ -123,5 +123,85 @@ window.zlaInterop = {
         if (el) {
             el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
+    },
+
+    // Dynamic certificate generator & downloader
+    downloadCertificate: function (tier, score, challengeTitle, stars) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 800;
+        canvas.height = 600;
+        const ctx = canvas.getContext('2d');
+
+        // Draw Dark Background
+        ctx.fillStyle = '#0a0a0c';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Neon Borders
+        ctx.strokeStyle = '#00f0ff';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+
+        ctx.strokeStyle = '#ff0055';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(25, 25, canvas.width - 50, canvas.height - 50);
+
+        // Draw Title
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 32px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('THE PROMPT CRUCIBLE', canvas.width / 2, 100);
+
+        ctx.fillStyle = '#00f0ff';
+        ctx.font = '16px monospace';
+        ctx.fillText('OPERATOR CERTIFICATE OF COMPETENCY', canvas.width / 2, 130);
+
+        // Draw Line
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.3)';
+        ctx.beginPath();
+        ctx.moveTo(100, 160);
+        ctx.lineTo(700, 160);
+        ctx.stroke();
+
+        // Draw Level/Challenge Info
+        ctx.fillStyle = '#888888';
+        ctx.font = '16px sans-serif';
+        ctx.fillText('For successfully executing the scenario:', canvas.width / 2, 210);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.fillText(challengeTitle.toUpperCase(), canvas.width / 2, 240);
+
+        // Draw Score Info
+        ctx.fillStyle = '#888888';
+        ctx.font = '16px sans-serif';
+        ctx.fillText('Achieving a Performance Score of:', canvas.width / 2, 300);
+
+        ctx.fillStyle = '#39ff14'; // matrix green
+        ctx.font = 'bold 48px sans-serif';
+        ctx.fillText(score + ' / 100', canvas.width / 2, 355);
+
+        // Draw Tier Info
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 20px monospace';
+        ctx.fillText(tier.toUpperCase(), canvas.width / 2, 420);
+
+        // Draw Rating (Stars)
+        ctx.fillStyle = '#ffbf00'; // Amber
+        ctx.font = '24px sans-serif';
+        ctx.fillText('★'.repeat(stars) + '☆'.repeat(Math.max(0, 3 - stars)), canvas.width / 2, 460);
+
+        // Draw Footer/Date
+        const dateStr = new Date().toLocaleDateString();
+        ctx.fillStyle = '#555555';
+        ctx.font = '12px monospace';
+        ctx.fillText('VERIFIED SYSTEM RUN: ' + dateStr, canvas.width / 2, 520);
+        ctx.fillText('SECURE CONTAINER COMPLETED IN BROWSER MEMORY', canvas.width / 2, 545);
+
+        // Trigger Download
+        const dataUrl = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = 'Prompt_Crucible_Certificate.png';
+        link.href = dataUrl;
+        link.click();
     }
 };

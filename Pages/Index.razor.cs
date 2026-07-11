@@ -7,6 +7,7 @@ using System.Text.Json.Serialization;
 using PromptMyCircumstance.Models;
 using PromptMyCircumstance.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 
 namespace PromptMyCircumstance.Pages
 {
@@ -39,6 +40,8 @@ namespace PromptMyCircumstance.Pages
 
     public partial class Index : ComponentBase
     {
+        [Inject]
+        protected IJSRuntime JSRuntime { get; set; } = default!;
         private List<ChallengePayload> Challenges = new();
         private int CurrentIndex = 0;
         private string UserPrompt = string.Empty;
@@ -152,6 +155,13 @@ namespace PromptMyCircumstance.Pages
             if (score >= 90) return "neon-matrix-green";
             if (score >= 70) return "neon-text-blue";
             return "neon-text-red";
+        }
+
+        private async Task DownloadCertificate()
+        {
+            if (Result == null) return;
+            var current = Challenges[CurrentIndex];
+            await JSRuntime.InvokeVoidAsync("zlaInterop.downloadCertificate", Result.OperatorTier, Result.TotalScore.ToString("F1"), current.Title, current.DifficultyStars);
         }
     }
 }

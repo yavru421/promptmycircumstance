@@ -68,6 +68,13 @@
                         </div>
                         <p class="cyber-feedback">@Result.TierFeedback</p>
                         
+                        @if (AnimationPercentage >= 100)
+                        {
+                            <button class="download-cert-btn animate-fade" @onclick="DownloadCertificate">
+                                Download Competency Certificate
+                            </button>
+                        }
+                        
                         <div class="metric-breakdown">
                             @foreach (var metric in Result.Metrics)
                             {

@@ -38,125 +38,35 @@ namespace PromptMyCircumstance.Services
         [JsonPropertyName("ai_semantic_score")]
         public double AiSemanticScore { get; set; }
 
+        [JsonPropertyName("ai_actionability_score")]
+        public double AiActionabilityScore { get; set; }
+
+        [JsonPropertyName("ai_constraint_adherence_score")]
+        public double AiConstraintAdherenceScore { get; set; }
+
+        [JsonPropertyName("ai_target_alignment_score")]
+        public double AiTargetAlignmentScore { get; set; }
+
         [JsonPropertyName("ai_failure_analysis")]
         public string AiFailureAnalysis { get; set; } = string.Empty;
     }
 
     public class BalancedCriteriaWeights
     {
-        [JsonPropertyName("logical_boundary_control")]
-        public LogicalBoundaryControl LogicalBoundaryControl { get; set; } = new();
+        [JsonPropertyName("actionability")]
+        public double ActionabilityWeight { get; set; } = 40.0;
 
-        [JsonPropertyName("token_velocity_density")]
-        public TokenVelocityDensity TokenVelocityDensity { get; set; } = new();
+        [JsonPropertyName("constraint_adherence")]
+        public double ConstraintAdherenceWeight { get; set; } = 30.0;
 
-        [JsonPropertyName("state_context_architecture")]
-        public StateContextArchitecture StateContextArchitecture { get; set; } = new();
-
-        [JsonPropertyName("first_shot_output_compliance")]
-        public FirstShotOutputCompliance FirstShotOutputCompliance { get; set; } = new();
-    }
-
-    public class LogicalBoundaryControl
-    {
-        [JsonPropertyName("weight_percentage")]
-        public double WeightPercentage { get; set; } = 30.0;
-
-        [JsonPropertyName("score_threshold")]
-        public int ScoreThreshold { get; set; } = 90;
-
-        [JsonPropertyName("unassigned_variable_rule")]
-        public UnassignedVariableRule UnassignedVariableRule { get; set; } = new();
-    }
-
-    public class UnassignedVariableRule
-    {
-        [JsonPropertyName("pattern_to_match")]
-        public string PatternToMatch { get; set; } = @"(?i)someone\s+needs\s+to|who\s+is\s+doing";
-
-        [JsonPropertyName("tag_replacement")]
-        public string TagReplacement { get; set; } = "[UNASSIGNED]";
-    }
-
-    public class TokenVelocityDensity
-    {
-        [JsonPropertyName("weight_percentage")]
-        public double WeightPercentage { get; set; } = 25.0;
-
-        [JsonPropertyName("max_word_limit")]
-        public int MaxWordLimit { get; set; } = 50;
-
-        [JsonPropertyName("courtesy_token_tolerance")]
-        public int CourtesyTokenTolerance { get; set; } = 5;
-    }
-
-    public class StateContextArchitecture
-    {
-        [JsonPropertyName("weight_percentage")]
-        public double WeightPercentage { get; set; } = 20.0;
-
-        [JsonPropertyName("enforce_delimiters")]
-        public bool EnforceDelimiters { get; set; } = true;
-
-        [JsonPropertyName("allowed_delimiters")]
-        public List<string> AllowedDelimiters { get; set; } = new() { "```", "###", "📂", "📋" };
-    }
-
-    public class FirstShotOutputCompliance
-    {
-        [JsonPropertyName("weight_percentage")]
-        public double WeightPercentage { get; set; } = 25.0;
-
-        [JsonPropertyName("enforce_single_turn_success")]
-        public bool EnforceSingleTurnSuccess { get; set; } = true;
-
-        [JsonPropertyName("target_format_standard")]
-        public string TargetFormatStandard { get; set; } = "markdown_list";
+        [JsonPropertyName("target_alignment")]
+        public double TargetAlignmentWeight { get; set; } = 30.0;
     }
 
     public class ProgrammaticValidationRules
     {
         [JsonPropertyName("semantic_match_threshold")]
         public double SemanticMatchThreshold { get; set; } = 0.85;
-
-        [JsonPropertyName("output_structural_validation")]
-        public OutputStructuralValidation OutputStructuralValidation { get; set; } = new();
-
-        [JsonPropertyName("vibe_shorthand_mappings")]
-        public List<VibeShorthandMapping> VibeShorthandMappings { get; set; } = new();
-    }
-
-    public class OutputStructuralValidation
-    {
-        [JsonPropertyName("regex_validations")]
-        public List<RegexValidation> RegexValidations { get; set; } = new();
-
-        [JsonPropertyName("strip_patterns")]
-        public List<string> StripPatterns { get; set; } = new();
-    }
-
-    public class RegexValidation
-    {
-        [JsonPropertyName("validation_id")]
-        public string ValidationId { get; set; } = string.Empty;
-
-        [JsonPropertyName("regex_pattern")]
-        public string RegexPattern { get; set; } = string.Empty;
-
-        [JsonPropertyName("required_presence")]
-        public bool RequiredPresence { get; set; } = true;
-    }
-
-    public class VibeShorthandMapping
-    {
-        [JsonPropertyName("shorthand_keyword")]
-        public string ShorthandKeyword { get; set; } = string.Empty;
-
-        [JsonPropertyName("execution_target_description")]
-        public string ExecutionTargetDescription { get; set; } = string.Empty;
-
-        [JsonPropertyName("semantic_space_activation_check")]
-        public string SemanticSpaceActivationCheck { get; set; } = string.Empty;
     }
 
     #endregion
@@ -192,16 +102,6 @@ namespace PromptMyCircumstance.Services
 
     public class BalancedScoringEngine
     {
-        private static readonly string[] CourtesyWords = new[]
-        {
-            "please", "thank you", "thanks", "kindly", "could you", "would you", "appreciate it"
-        };
-
-        private static readonly string[] EmotionalVentingKeywords = new[]
-        {
-            "sweating bullets", "breathing down my neck", "paperwork again", "garbage", "so tired", "tired of playing catch"
-        };
-
         /// <summary>
         /// Executes the complete reference-guided scoring loop inside browser memory (ZLA).
         /// </summary>
@@ -210,19 +110,16 @@ namespace PromptMyCircumstance.Services
             var result = new EvaluationResult();
             int currentProgress = 0;
 
-            AddProgressStep(result, "Initializing Crucible Engine", currentProgress += 10, "Setting up stateless memory variables...");
+            AddProgressStep(result, "Initializing Crucible Engine", currentProgress += 10, "Setting up stateless evaluation matrix...");
 
-            var boundaryScore = EvaluateLogicalBoundaryControl(payload, result, ref currentProgress);
-            result.Metrics.Add(boundaryScore);
+            var actionabilityScore = EvaluateActionability(payload, result, ref currentProgress);
+            result.Metrics.Add(actionabilityScore);
 
-            var velocityScore = EvaluateTokenVelocityDensity(payload, result, ref currentProgress);
-            result.Metrics.Add(velocityScore);
+            var constraintScore = EvaluateConstraintAdherence(payload, result, ref currentProgress);
+            result.Metrics.Add(constraintScore);
 
-            var architectureScore = EvaluateStateContextArchitecture(payload, result, ref currentProgress);
-            result.Metrics.Add(architectureScore);
-
-            var complianceScore = EvaluateFirstShotOutputCompliance(payload, result, ref currentProgress);
-            result.Metrics.Add(complianceScore);
+            var alignmentScore = EvaluateTargetAlignment(payload, result, ref currentProgress);
+            result.Metrics.Add(alignmentScore);
 
             result.TotalScore = result.Metrics.Sum(m => m.PointsEarned);
             DetermineOperatorTier(result);
@@ -232,236 +129,92 @@ namespace PromptMyCircumstance.Services
             return result;
         }
 
-        private MetricScore EvaluateLogicalBoundaryControl(BalancedPromptEvaluation payload, EvaluationResult result, ref int progress)
+        private MetricScore EvaluateActionability(BalancedPromptEvaluation payload, EvaluationResult result, ref int progress)
         {
             var metric = new MetricScore
             {
-                CriteriaName = "Logical Boundary Control",
-                MaxPoints = payload.BalancedCriteriaWeights.LogicalBoundaryControl.WeightPercentage
+                CriteriaName = "Actionability (Bare-Metal)",
+                MaxPoints = payload.BalancedCriteriaWeights.ActionabilityWeight
             };
 
-            AddProgressStep(result, "Evaluating Logical Gating", progress += 15, "Analyzing unassigned variables and liability parsing...");
+            AddProgressStep(result, "Evaluating Output Actionability", progress += 30, "Analyzing executable payloads, scripts, and direct workflows...");
 
-            double points = 0;
-            string rawPrompt = payload.EvaluatorInputs.RawPromptText;
-            string capturedOutput = payload.EvaluatorInputs.CapturedOutputString;
-            string targetTag = payload.BalancedCriteriaWeights.LogicalBoundaryControl.UnassignedVariableRule.TagReplacement;
-
-            bool hasUnassignedTagInOutput = capturedOutput.Contains(targetTag, StringComparison.OrdinalIgnoreCase);
-            if (hasUnassignedTagInOutput)
-            {
-                points += 15.0;
-                metric.ExecutionLogs.Add($"PASS: Found exact validation tag '{targetTag}' inside captured Turn-1 output.");
-            }
-            else
-            {
-                metric.ExecutionLogs.Add($"FAIL: Captured Turn-1 output failed to programmatically tag empty variables as '{targetTag}'.");
-            }
-
-            var instructionMatch = Regex.Match(rawPrompt, @"(?i)unassigned|tag|missing|without\s+name|no\s+person");
-            if (instructionMatch.Success)
-            {
-                points += 15.0;
-                metric.ExecutionLogs.Add("PASS: User prompt successfully dictated boundary control rules for unassigned variables.");
-            }
-            else
-            {
-                bool mappedVibe = MapVibeShorthand(rawPrompt, payload, "Logical Boundary Control", metric.ExecutionLogs);
-                if (mappedVibe)
-                {
-                    points += 10.0;
-                    metric.ExecutionLogs.Add("WARNING: Prompt relied on semantic pre-trained alignment (Vibe Delegation) instead of absolute logic gates.");
-                }
-                else
-                {
-                    metric.ExecutionLogs.Add("FAIL: Raw prompt lacked system instructions to capture missing variables.");
-                }
-            }
+            double rawScore = payload.EvaluatorInputs.AiActionabilityScore;
+            double points = rawScore * metric.MaxPoints;
 
             metric.PointsEarned = points;
-            metric.Status = points >= 25.0 ? "Pass" : (points >= 15.0 ? "Warning" : "Fail");
+            metric.Status = points >= (metric.MaxPoints * 0.8) ? "Pass" : (points >= (metric.MaxPoints * 0.5) ? "Warning" : "Fail");
+
+            metric.ExecutionLogs.Add($"Judge Actionability Index: {rawScore:F2} / 1.00");
+            metric.ExecutionLogs.Add($"Calculated Score: {points:F1} / {metric.MaxPoints}");
+            
+            // Check for direct execution formats
+            bool hasCodeBlocks = payload.EvaluatorInputs.CapturedOutputString.Contains("```");
+            if (hasCodeBlocks)
+            {
+                metric.ExecutionLogs.Add("PASS: Verified presence of isolated code blocks or configuration overrides.");
+            }
+            else
+            {
+                metric.ExecutionLogs.Add("NOTICE: Output contains text instructions but no raw code/command isolation blocks.");
+            }
+
             return metric;
         }
 
-        private MetricScore EvaluateTokenVelocityDensity(BalancedPromptEvaluation payload, EvaluationResult result, ref int progress)
+        private MetricScore EvaluateConstraintAdherence(BalancedPromptEvaluation payload, EvaluationResult result, ref int progress)
         {
             var metric = new MetricScore
             {
-                CriteriaName = "Token Velocity & Density",
-                // BUG FIX: was TokenVelocity_Density (underscore), correct C# property name is TokenVelocityDensity
-                MaxPoints = payload.BalancedCriteriaWeights.TokenVelocityDensity.WeightPercentage
+                CriteriaName = "Constraint Adherence (No Hallucination)",
+                MaxPoints = payload.BalancedCriteriaWeights.ConstraintAdherenceWeight
             };
 
-            AddProgressStep(result, "Scanning Token Footprint", progress += 20, "Calculating word limits and applying courtesy tolerances...");
+            AddProgressStep(result, "Verifying System Parameters", progress += 30, "Comparing output parameters against circumstance constraints...");
 
-            string prompt = payload.EvaluatorInputs.RawPromptText;
-            int maxLimit = payload.BalancedCriteriaWeights.TokenVelocityDensity.MaxWordLimit;
-            int tolerance = payload.BalancedCriteriaWeights.TokenVelocityDensity.CourtesyTokenTolerance;
-
-            string[] rawWords = prompt.Split(new[] { ' ', '\r', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-            int rawCount = rawWords.Length;
-            metric.ExecutionLogs.Add($"Telemetry: Prompt contains {rawCount} raw words.");
-
-            int removedCourtesyCount = 0;
-            string cleanedPrompt = prompt;
-            foreach (var word in CourtesyWords)
-            {
-                var matches = Regex.Matches(cleanedPrompt, @"\b" + Regex.Escape(word) + @"\b", RegexOptions.IgnoreCase);
-                if (matches.Count > 0)
-                {
-                    removedCourtesyCount += matches.Count * word.Split(' ').Length;
-                    cleanedPrompt = Regex.Replace(cleanedPrompt, @"\b" + Regex.Escape(word) + @"\b", "", RegexOptions.IgnoreCase);
-                }
-            }
-
-            int allowedCourtesyDeduction = Math.Min(removedCourtesyCount, tolerance);
-            int adjustedCount = rawCount - allowedCourtesyDeduction;
-
-            metric.ExecutionLogs.Add($"Courtesy Filter: Stripped {removedCourtesyCount} courtesy words. Deducted {allowedCourtesyDeduction} (Tolerance Cap: {tolerance}).");
-            metric.ExecutionLogs.Add($"Adjusted Token Velocity: {adjustedCount} words.");
-
-            double points = 0;
-            if (adjustedCount <= maxLimit)
-            {
-                points = 25.0;
-                metric.ExecutionLogs.Add($"PASS: Adjusted velocity ({adjustedCount}) is inside target envelope (<= {maxLimit} words).");
-            }
-            else
-            {
-                int bloat = adjustedCount - maxLimit;
-                points = Math.Max(0.0, 25.0 - (bloat * 1.5));
-                metric.ExecutionLogs.Add($"WARNING: Velocity degraded by {bloat} excess tokens. Score: {points:F1}/25.");
-            }
+            double rawScore = payload.EvaluatorInputs.AiConstraintAdherenceScore;
+            double points = rawScore * metric.MaxPoints;
 
             metric.PointsEarned = points;
-            metric.Status = points >= 20.0 ? "Pass" : (points >= 10.0 ? "Warning" : "Fail");
-            return metric;
-        }
+            metric.Status = points >= (metric.MaxPoints * 0.8) ? "Pass" : (points >= (metric.MaxPoints * 0.5) ? "Warning" : "Fail");
 
-        private MetricScore EvaluateStateContextArchitecture(BalancedPromptEvaluation payload, EvaluationResult result, ref int progress)
-        {
-            var metric = new MetricScore
-            {
-                CriteriaName = "State & Context Architecture",
-                // BUG FIX: was State_Context_Architecture, correct property is StateContextArchitecture
-                MaxPoints = payload.BalancedCriteriaWeights.StateContextArchitecture.WeightPercentage
-            };
-
-            AddProgressStep(result, "Evaluating Context Separation", progress += 20, "Checking formatting delimiter isolation blocks...");
-
-            bool enforceDelimiters = payload.BalancedCriteriaWeights.StateContextArchitecture.EnforceDelimiters;
-            var allowedDelimiters = payload.BalancedCriteriaWeights.StateContextArchitecture.AllowedDelimiters;
-            string prompt = payload.EvaluatorInputs.RawPromptText;
-
-            double points = 0;
-            if (!enforceDelimiters)
-            {
-                points = 20.0;
-                metric.ExecutionLogs.Add("NOTICE: Delimiter enforcement disabled. Defaulting to Pass.");
-            }
-            else
-            {
-                // BUG FIX: was prompt.Contains(word: d) — named param "word:" is invalid; fixed to prompt.Contains(d)
-                List<string> foundDelimiters = allowedDelimiters.Where(d => prompt.Contains(d)).ToList();
-
-                if (foundDelimiters.Count > 0)
-                {
-                    points = 20.0;
-                    metric.ExecutionLogs.Add($"PASS: Found delimiter tokens: {string.Join(", ", foundDelimiters)}. Isolation logic enforced.");
-                }
-                else
-                {
-                    var bracketMatch = Regex.Match(prompt, @"[""\[{](.*?)[""\]}]");
-                    if (bracketMatch.Success)
-                    {
-                        points = 10.0;
-                        metric.ExecutionLogs.Add("WARNING: Direct delimiters missing. Prompt isolated context with bracket parameters.");
-                    }
-                    else
-                    {
-                        metric.ExecutionLogs.Add("FAIL: Zero context architecture delimiters. High risk of instruction drowning.");
-                    }
-                }
-            }
-
-            metric.PointsEarned = points;
-            metric.Status = points >= 20.0 ? "Pass" : (points >= 10.0 ? "Warning" : "Fail");
-            return metric;
-        }
-
-        private MetricScore EvaluateFirstShotOutputCompliance(BalancedPromptEvaluation payload, EvaluationResult result, ref int progress)
-        {
-            var metric = new MetricScore
-            {
-                CriteriaName = "First-Shot Output Compliance",
-                MaxPoints = payload.BalancedCriteriaWeights.FirstShotOutputCompliance.WeightPercentage
-            };
-
-            AddProgressStep(result, "Validating Output Compliance", progress += 25, "Evaluating AI Agent evaluation metrics and gold standard scaling...");
-
-            double score = payload.EvaluatorInputs.AiSemanticScore;
-            double points = score * metric.MaxPoints;
-
-            metric.ExecutionLogs.Add($"AI Evaluator Scale: {score:F2} / 1.00");
+            metric.ExecutionLogs.Add($"Judge Constraint Compliance: {rawScore:F2} / 1.00");
             metric.ExecutionLogs.Add($"Calculated Score: {points:F1} / {metric.MaxPoints}");
 
-            if (!string.IsNullOrWhiteSpace(payload.EvaluatorInputs.AiFailureAnalysis))
-            {
-                metric.ExecutionLogs.Add($"Judge Feedback: {payload.EvaluatorInputs.AiFailureAnalysis}");
-            }
-
-            metric.PointsEarned = points;
-            metric.Status = points >= 20.0 ? "Pass" : (points >= 10.0 ? "Warning" : "Fail");
             return metric;
         }
 
-        #region Mathematics Helpers
-
-        private double ComputeJaccardSimilarity(string source, string target)
+        private MetricScore EvaluateTargetAlignment(BalancedPromptEvaluation payload, EvaluationResult result, ref int progress)
         {
-            if (string.IsNullOrWhiteSpace(source) || string.IsNullOrWhiteSpace(target))
-                return 0.0;
-
-            HashSet<string> sourceTokens = TokenizeAndClean(source);
-            HashSet<string> targetTokens = TokenizeAndClean(target);
-
-            if (sourceTokens.Count == 0 || targetTokens.Count == 0)
-                return 0.0;
-
-            int intersectionCount = sourceTokens.Intersect(targetTokens).Count();
-            int unionCount = sourceTokens.Union(targetTokens).Count();
-
-            return (double)intersectionCount / unionCount;
-        }
-
-        private HashSet<string> TokenizeAndClean(string text)
-        {
-            string cleanText = Regex.Replace(text.ToLower(), @"[^\w\s]", "");
-            string[] rawWords = cleanText.Split(new[] { ' ', '\r', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-            return new HashSet<string>(rawWords);
-        }
-
-        private bool MapVibeShorthand(string prompt, BalancedPromptEvaluation payload, string criteria, List<string> logs)
-        {
-            foreach (var mapping in payload.ProgrammaticValidationRules.VibeShorthandMappings)
+            var metric = new MetricScore
             {
-                if (prompt.Contains(mapping.ShorthandKeyword, StringComparison.OrdinalIgnoreCase))
-                {
-                    logs.Add($"Vibe Activation: Sourced shorthand keyword '{mapping.ShorthandKeyword}' in prompt.");
-                    logs.Add($"Orchestrator Directive: Activating semantic space check '{mapping.SemanticSpaceActivationCheck}'.");
+                CriteriaName = "Target Alignment (Did It Work?)",
+                MaxPoints = payload.BalancedCriteriaWeights.TargetAlignmentWeight
+            };
 
-                    bool hasSucceeded = Regex.IsMatch(payload.EvaluatorInputs.CapturedOutputString, mapping.SemanticSpaceActivationCheck);
-                    if (hasSucceeded)
-                    {
-                        logs.Add($"Vibe Compliance Success: Checked execution of '{mapping.ExecutionTargetDescription}' in completions.");
-                        return true;
-                    }
-                }
+            AddProgressStep(result, "Analyzing Target Fulfillment", progress += 20, "Measuring semantic alignment with reference resolution...");
+
+            double rawScore = payload.EvaluatorInputs.AiTargetAlignmentScore;
+            double points = rawScore * metric.MaxPoints;
+
+            metric.PointsEarned = points;
+            metric.Status = points >= (metric.MaxPoints * 0.8) ? "Pass" : (points >= (metric.MaxPoints * 0.5) ? "Warning" : "Fail");
+
+            metric.ExecutionLogs.Add($"Judge Semantic Alignment: {rawScore:F2} / 1.00");
+            metric.ExecutionLogs.Add($"Calculated Score: {points:F1} / {metric.MaxPoints}");
+
+            if (!string.IsNullOrWhiteSpace(payload.EvaluatorInputs.AiFailureAnalysis) && 
+                !payload.EvaluatorInputs.AiFailureAnalysis.Equals("None", StringComparison.OrdinalIgnoreCase))
+            {
+                metric.ExecutionLogs.Add($"Judge Diagnosis: {payload.EvaluatorInputs.AiFailureAnalysis}");
             }
-            return false;
-        }
+            else
+            {
+                metric.ExecutionLogs.Add("PASS: Objective resolved successfully with zero semantic drift.");
+            }
 
-        #endregion
+            return metric;
+        }
 
         #region UI and State Progression Handlers
 
@@ -479,18 +232,18 @@ namespace PromptMyCircumstance.Services
         {
             if (result.TotalScore >= 90.0)
             {
-                result.OperatorTier = "Tier 1: Elite System Orchestrator";
-                result.TierFeedback = "Optimal token velocity. Absolute boundary control achieved.";
+                result.OperatorTier = "S-Tier: Master Operator";
+                result.TierFeedback = "Actionable, direct instruction. Zero translation needed, absolute constraint adherence.";
             }
             else if (result.TotalScore >= 70.0)
             {
-                result.OperatorTier = "Tier 2: Technical Integrator";
-                result.TierFeedback = "Functional execution, but prone to downstream token bloat. Streamline your intent.";
+                result.OperatorTier = "A-Tier: Capable Integrator";
+                result.TierFeedback = "Correct resolution, but prompt required agent clarification or contained mild semantic drift.";
             }
             else
             {
-                result.OperatorTier = "Tier 3: Casual Consumer";
-                result.TierFeedback = "High model drift risk. You are talking to the machine instead of programming it.";
+                result.OperatorTier = "B-Tier: Casual Informant";
+                result.TierFeedback = "High risk of hallucination or non-actionable output. Refine parameters and specify clear outcome bounds.";
             }
         }
 

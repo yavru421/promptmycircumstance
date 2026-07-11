@@ -11,44 +11,40 @@
         var current = Challenges[CurrentIndex];
         
         <div class="crucible-header">
-            <h1 class="neon-text-blue">The Prompt Crucible</h1>
+            <h1 class="neon-text-blue">Prompt My Circumstance</h1>
             <div class="challenge-nav">
                 <button @onclick="PrevChallenge" disabled="@(CurrentIndex == 0)">&#9664; Prev</button>
-                <span>Challenge @(CurrentIndex + 1) / @Challenges.Count</span>
+                <span>Circumstance @(CurrentIndex + 1) / @Challenges.Count</span>
                 <button @onclick="NextChallenge" disabled="@(CurrentIndex == Challenges.Count - 1)">Next &#9654;</button>
             </div>
         </div>
 
         <div class="crucible-grid">
-            <!-- Left: Challenge Telemetry -->
+            <!-- Left: Observed Circumstance -->
             <div class="panel challenge-panel">
                 <h2>@current.Title</h2>
                 <div class="badge-row">
                     <span class="badge domain">@current.DomainTag</span>
                     <span class="badge difficulty">@(new string('★', current.DifficultyStars))</span>
                 </div>
-                <h3>Raw Telemetry Dump</h3>
+                <h3>Observed Symptom / Issue</h3>
                 <div class="telemetry-box">
                     @current.RawTelemetryDump
-                </div>
-                <h3>Target Gold Standard</h3>
-                <div class="gold-box">
-                    @current.ReferenceGoldStandardAnswer
                 </div>
             </div>
 
             <!-- Center: Operator Workspace -->
             <div class="panel operator-panel">
-                <h3>Operator Input (Your Prompt)</h3>
-                <textarea @bind="UserPrompt" placeholder="Type prompt to process telemetry..."></textarea>
+                <h3>Your Instruction to the Agent</h3>
+                <textarea @bind="UserPrompt" placeholder="Type instruction to resolve this circumstance..."></textarea>
                 
                 <button class="submit-btn" @onclick="RunLocalEvaluationLoop" disabled="@IsRunning">
-                    @(IsRunning ? "Executing AI Pipeline..." : "Run Analysis Pipeline")
+                    @(IsRunning ? "Agent Resolving Circumstance..." : "Dispatch Agent")
                 </button>
 
                 @if (!string.IsNullOrEmpty(ActualAiOutput))
                 {
-                    <h3 style="margin-top:20px; color:var(--neon-amber);">Live AI Completion Result</h3>
+                    <h3 style="margin-top:20px; color:var(--neon-amber);">Agent Response / Resolution</h3>
                     <div class="gold-box" style="border-left-color: var(--neon-blue);">
                         @ActualAiOutput
                     </div>
@@ -57,7 +53,7 @@
 
             <!-- Right: Scoreboard -->
             <div class="panel scoreboard-panel">
-                <h3>Evaluation Matrix</h3>
+                <h3>Instruction Efficiency Matrix</h3>
                 
                 @if (Result != null)
                 {
@@ -71,7 +67,7 @@
                         @if (AnimationPercentage >= 100)
                         {
                             <button class="download-cert-btn animate-fade" @onclick="DownloadCertificate">
-                                Download Competency Certificate
+                                Download Operator Certificate
                             </button>
                         }
                         
@@ -94,7 +90,7 @@
                     }
                     @if (ActivePhaseLogs.Count == 0 && Result == null)
                     {
-                        <div class="terminal-line">Awaiting telemetry payload...</div>
+                        <div class="terminal-line">Awaiting agent dispatch...</div>
                     }
                 </div>
             </div>
@@ -102,6 +98,6 @@
     }
     else
     {
-        <div class="loading-state">Loading Challenge Matrix...</div>
+        <div class="loading-state">Loading Circumstance Matrix...</div>
     }
 </div>

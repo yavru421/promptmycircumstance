@@ -17,11 +17,11 @@ export default {
                 }
 
                 // -------------------------------------------------------------
-                // PIPELINE STAGE 1: Execution Sandbox (Llama-3-8B)
+                // PIPELINE STAGE 1: Execution Sandbox (Llama-3.1-8B-FP8)
                 // -------------------------------------------------------------
                 const executionSystemPrompt = `You are a strict data processing node. You must process the raw data strictly adhering to the user's instructions. Do not provide any conversational filler or meta-commentary. Run the instruction exactly.`;
                 
-                const executionResponse = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
+                const executionResponse = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fp8", {
                     messages: [
                         { role: "system", content: executionSystemPrompt },
                         { role: "user", content: `Raw Data:\n${rawTelemetry}\n\nOperator Instructions:\n${userPrompt}` }
@@ -31,29 +31,31 @@ export default {
                 const executionResult = executionResponse.response;
 
                 // -------------------------------------------------------------
-                // PIPELINE STAGE 2: Calibrated Decoupled Evaluator (Mistral-7B)
+                // PIPELINE STAGE 2: Real-World Resolution Judge (Qwen-30B)
                 // -------------------------------------------------------------
-                const evaluationSystemPrompt = `You are an expert calibrated AI judge assessing prompt engineering outputs. 
+                const evaluationSystemPrompt = `You are an expert calibrated AI judge assessing the quality of instructions given to an agent to solve a specific circumstance.
 You will be provided with:
-- RAW TELEMETRY
-- OPERATOR PROMPT
-- ACTUAL AI EXECUTION RESULT
-- TARGET GOLD STANDARD ANSWER
+- THE CIRCUMSTANCE (The raw observed symptom or problem)
+- OPERATOR PROMPT (The instruction written by the user)
+- ACTUAL AI EXECUTION RESULT (What the agent produced)
+- TARGET GOLD STANDARD OUTCOME (The expected result/resolution)
 
-Your goal is to evaluate how successfully the ACTUAL AI EXECUTION RESULT satisfied the target outcomes of the GOLD STANDARD, given the constraints of the OPERATOR PROMPT.
+Your goal is to evaluate the ACTUAL AI EXECUTION RESULT and grade how effectively the OPERATOR PROMPT guided the agent to achieve the TARGET GOLD STANDARD OUTCOME under the following three criteria.
 
 You must respond in raw JSON format. Do not write any markdown codeblocks or conversational text. Return exactly this JSON structure:
 {
-  "semantic_alignment_score": <float between 0.00 and 1.00 indicating quality and correctness alignment vs the Gold Standard>,
+  "actionability_score": <float between 0.00 and 1.00 indicating if the output contains a direct, immediately usable solution like executable code blocks, CLI commands, or direct physical workflows with zero translation needed>,
+  "constraint_adherence_score": <float between 0.00 and 1.00 indicating if the output strictly respected all parameters, dimensions, files, or environment constraints in the circumstance and prompt, with zero hallucinations>,
+  "target_alignment_score": <float between 0.00 and 1.00 indicating if the output directly resolves the specific symptom or goal described by the user>,
   "failure_analysis": "<Brief string explaining what was missing or incorrect. If it is a perfect match, return 'None'>"
 }
 
-Be extremely strict. 
-- If the ACTUAL RESULT has emotional venting or corporate filler that was in the RAW TELEMETRY but should have been cleaned, deduct score.
-- If it missed tagging missing variables correctly (e.g. tag empty owner slots with '[UNASSIGNED]' or similar), deduct score.
-- If it drifted semantically from the GOLD STANDARD, scale the score down proportionally.`;
+Be extremely strict:
+- If the ACTUAL RESULT contains conversational intro/outro filler (e.g. "Sure, I can help with that..."), deduct from the actionability_score.
+- If it hallucinated elements or ignored constraints (e.g. board sizes, directory limits), deduct heavily from constraint_adherence_score.
+- If it drifted semantically from solving the primary circumstance, deduct from target_alignment_score.`;
 
-                const evaluationUserMessage = `RAW TELEMETRY:
+                const evaluationUserMessage = `THE CIRCUMSTANCE:
 "${rawTelemetry}"
 
 OPERATOR PROMPT:
@@ -62,7 +64,7 @@ OPERATOR PROMPT:
 ACTUAL AI EXECUTION RESULT:
 "${executionResult}"
 
-TARGET GOLD STANDARD ANSWER:
+TARGET GOLD STANDARD OUTCOME:
 "${goldStandard}"`;
 
                 const evaluationResponse = await env.AI.run("@cf/qwen/qwen3-30b-a3b-fp8", {
@@ -80,33 +82,41 @@ TARGET GOLD STANDARD ANSWER:
                     judgeText = judgeText.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
                 }
 
-                let score = 0.0;
+                let actionability = 0.0;
+                let constraintAdherence = 0.0;
+                let targetAlignment = 0.0;
                 let feedback = "Failed to parse judge evaluation.";
                 
                 try {
                     const parsedJudge = JSON.parse(judgeText);
-                    score = parseFloat(parsedJudge.semantic_alignment_score);
-                    if (isNaN(score)) score = 0.0;
-                    score = Math.max(0.0, Math.min(1.0, score)); // Clamp 0.0-1.0
+                    actionability = parseFloat(parsedJudge.actionability_score);
+                    constraintAdherence = parseFloat(parsedJudge.constraint_adherence_score);
+                    targetAlignment = parseFloat(parsedJudge.target_alignment_score);
                     feedback = parsedJudge.failure_analysis || "No analysis provided.";
                 } catch (parseErr) {
                     // Fallback heuristics if the LLM output is not valid JSON
                     feedback = "Evaluator output parse error. Raw judge output: " + judgeText;
                     
-                    const scoreMatch = judgeText.match(/"semantic_alignment_score"\s*:\s*([0-9\.]+)/);
-                    if (scoreMatch) {
-                        score = parseFloat(scoreMatch[1]);
-                        if (isNaN(score)) score = 0.0;
-                    }
-                    const feedbackMatch = judgeText.match(/"failure_analysis"\s*:\s*"([^"]+)"/);
-                    if (feedbackMatch) {
-                        feedback = feedbackMatch[1];
-                    }
+                    const actionMatch = judgeText.match(/"actionability_score"\s*:\s*([0-9\.]+)/);
+                    if (actionMatch) actionability = parseFloat(actionMatch[1]);
+                    
+                    const constraintMatch = judgeText.match(/"constraint_adherence_score"\s*:\s*([0-9\.]+)/);
+                    if (constraintMatch) constraintAdherence = parseFloat(constraintMatch[1]);
+                    
+                    const targetMatch = judgeText.match(/"target_alignment_score"\s*:\s*([0-9\.]+)/);
+                    if (targetMatch) targetAlignment = parseFloat(targetMatch[1]);
                 }
+
+                // Clamp scores 0.0-1.0
+                actionability = Math.max(0.0, Math.min(1.0, isNaN(actionability) ? 0.0 : actionability));
+                constraintAdherence = Math.max(0.0, Math.min(1.0, isNaN(constraintAdherence) ? 0.0 : constraintAdherence));
+                targetAlignment = Math.max(0.0, Math.min(1.0, isNaN(targetAlignment) ? 0.0 : targetAlignment));
 
                 return new Response(JSON.stringify({
                     execution_result: executionResult,
-                    semantic_alignment_score: score,
+                    actionability_score: actionability,
+                    constraint_adherence_score: constraintAdherence,
+                    target_alignment_score: targetAlignment,
                     failure_analysis: feedback
                 }), {
                     headers: { "Content-Type": "application/json" }

@@ -30,3 +30,34 @@
 - **Output Destination**: `C:\Users\John\.gemini\antigravity\scratch\purge-constructionmeteorology-20260707-152030\harvest_report.json`
 - **Status**: Completed successfully.
 - **Findings**: Found 2 directories, 8 files, 4 interesting files, 0 registry keys, 0 services, 0 scheduled tasks, 10 paths to delete. Results written to output file.
+
+## 2026-07-10 19:40:00 (Crucible Realignment Planning)
+
+- **Role**: Lead AI Systems Architect
+- **Action**: Created revised implementation plan `implementation_plan.md` using the Operator's verbatim first-chats from `agent_memory.transcripts` as core inputs.
+- **Goal**: Realign challenge database to use the exact verbatim prompts and solutions from the Operator's past 30 conversations in the workspace transcript database.
+- **Status**: Completed successfully. Harvested 30 exact user requests and gold standards using a Python extraction script, generated robust JSON-backed C# data models, updated scoring rules, and compiled cleanly.
+
+## 2026-07-10 21:50:00 (Tiered Subscription Integration Planning)
+
+- **Role**: Core Developer
+- **Action**: Researched workspace files, designed ZLA-compliant Stripe Checkout and Customer Portal integration, and generated the implementation plan.
+- **Goal**: Restrict unsubscribed users to a basic test (locking detail metrics/certificates) and unlock all features, challenges, and prompting habit logs via a real Stripe Checkout subscription integration, verified serverlessly via Cloudflare Worker API endpoints.
+- **Status**: Awaiting user approval of implementation plan.
+
+## 2026-07-11 06:37:00 (Prompt My Circumstance Redesign Planning)
+
+- **Role**: Core Developer
+- **Action**: Created revised implementation plan `implementation_plan.md` using the 25 user-provided real-world circumstances as the challenge dataset.
+- **Goal**: Replace the legacy, mismatched challenge list in `ChallengeLibrary.cs` with the user's actual interactions and update UI terminology to focus on "Circumstances" and "Agent Instructions" rather than "Telemetry" and "Operator Input".
+- **Status**: Updated with user's new Real-World Resolution Scoring directive. Awaiting user approval of implementation plan.
+
+
+
+
+
+
+
+
+
+

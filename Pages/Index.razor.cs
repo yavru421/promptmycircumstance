@@ -28,8 +28,14 @@ namespace PromptMyCircumstance.Pages
         [JsonPropertyName("execution_result")]
         public string ExecutionResult { get; set; } = string.Empty;
 
-        [JsonPropertyName("semantic_alignment_score")]
-        public double SemanticAlignmentScore { get; set; }
+        [JsonPropertyName("actionability_score")]
+        public double ActionabilityScore { get; set; }
+
+        [JsonPropertyName("constraint_adherence_score")]
+        public double ConstraintAdherenceScore { get; set; }
+
+        [JsonPropertyName("target_alignment_score")]
+        public double TargetAlignmentScore { get; set; }
 
         [JsonPropertyName("failure_analysis")]
         public string FailureAnalysis { get; set; } = string.Empty;
@@ -97,7 +103,7 @@ namespace PromptMyCircumstance.Pages
             
             var current = Challenges[CurrentIndex];
             
-            ActivePhaseLogs.Add("[API] Dispatching payload to Cloudflare AI Worker (Decoupled Pipeline)...");
+            ActivePhaseLogs.Add("[API] Dispatching instruction payload to Cloudflare AI Worker...");
             StateHasChanged();
 
             try
@@ -127,7 +133,9 @@ namespace PromptMyCircumstance.Pages
                 var payload = current.EvaluationSchema;
                 payload.EvaluatorInputs.RawPromptText = UserPrompt;
                 payload.EvaluatorInputs.CapturedOutputString = ActualAiOutput;
-                payload.EvaluatorInputs.AiSemanticScore = aiData?.SemanticAlignmentScore ?? 0.0;
+                payload.EvaluatorInputs.AiActionabilityScore = aiData?.ActionabilityScore ?? 0.0;
+                payload.EvaluatorInputs.AiConstraintAdherenceScore = aiData?.ConstraintAdherenceScore ?? 0.0;
+                payload.EvaluatorInputs.AiTargetAlignmentScore = aiData?.TargetAlignmentScore ?? 0.0;
                 payload.EvaluatorInputs.AiFailureAnalysis = aiData?.FailureAnalysis ?? "";
 
                 Result = Engine.Evaluate(payload);

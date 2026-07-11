@@ -21,7 +21,7 @@ export default {
                 // -------------------------------------------------------------
                 const executionSystemPrompt = `You are a strict data processing node. You must process the raw data strictly adhering to the user's instructions. Do not provide any conversational filler or meta-commentary. Run the instruction exactly.`;
                 
-                const executionResponse = await env.AI.run("@cf/meta/llama-3-8b-instruct", {
+                const executionResponse = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
                     messages: [
                         { role: "system", content: executionSystemPrompt },
                         { role: "user", content: `Raw Data:\n${rawTelemetry}\n\nOperator Instructions:\n${userPrompt}` }
@@ -65,7 +65,7 @@ ACTUAL AI EXECUTION RESULT:
 TARGET GOLD STANDARD ANSWER:
 "${goldStandard}"`;
 
-                const evaluationResponse = await env.AI.run("@cf/mistral/mistral-7b-instruct-v0.2", {
+                const evaluationResponse = await env.AI.run("@cf/qwen/qwen3-30b-a3b-fp8", {
                     messages: [
                         { role: "system", content: evaluationSystemPrompt },
                         { role: "user", content: evaluationUserMessage }

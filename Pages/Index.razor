@@ -5,7 +5,7 @@
 @inject ChallengeLibrary Library
 @inject HttpClient Http
 
-<div class="crucible-arena dark-mode">
+<div class="crucible-arena dark-mode" tabindex="0" @onkeydown="HandleKeyDown" style="outline: none;">
     <div class="crucible-header">
         <h1 class="brand-title">Prompt My <span class="accent">Circumstance</span></h1>
         @if (Stage != GameStage.Setup)
@@ -20,7 +20,7 @@
             <!-- Mode Switcher -->
             <div class="play-mode-row">
                 <button class="mode-toggle-btn @(SelectedPlayMode == GamePlayMode.Runner ? "active" : "")" @onclick="() => SelectedPlayMode = GamePlayMode.Runner">
-                    Runner Game Mode
+                    Ski Slalom Mode
                 </button>
                 <button class="mode-toggle-btn @(SelectedPlayMode == GamePlayMode.Classic ? "active" : "")" @onclick="StartClassicMode">
                     Classic Workbench Mode
@@ -30,25 +30,25 @@
             @if (SelectedPlayMode == GamePlayMode.Runner)
             {
                 <div class="cyber-card">
-                    <h2>Initialize Runner Course</h2>
+                    <h2>Initialize Downhill Cyber-Ski Slalom</h2>
                     <p style="color: var(--text-gray); margin-bottom: 24px;">
-                        Select the length of your circumstance runner challenge. Navigate oncoming obstacles by entering directives in real time.
+                        Slide down tilted neon snow slopes. Press <strong>Space / ArrowUp</strong> to Jump over Rock Mounds, and <strong>Down / Shift</strong> to Tuck under Low Pine Branches. Collect Crystals to boost your score multiplier!
                     </p>
 
                     <div class="mode-selector">
                         <button class="mode-btn @(SelectedRunLength == 5 ? "active" : "")" @onclick="() => SelectedRunLength = 5">
-                            Casual Run<br/><span style="font-size:0.8rem; font-weight:normal;">5 Challenges</span>
+                            Casual Slalom<br/><span style="font-size:0.8rem; font-weight:normal;">5 Challenges</span>
                         </button>
                         <button class="mode-btn @(SelectedRunLength == 10 ? "active" : "")" @onclick="() => SelectedRunLength = 10">
-                            Challenger Run<br/><span style="font-size:0.8rem; font-weight:normal;">10 Challenges</span>
+                            Challenger Slalom<br/><span style="font-size:0.8rem; font-weight:normal;">10 Challenges</span>
                         </button>
                         <button class="mode-btn @(SelectedRunLength == 25 ? "active" : "")" @onclick="() => SelectedRunLength = 25">
-                            Hardcore Run<br/><span style="font-size:0.8rem; font-weight:normal;">All 25 Challenges</span>
+                            Hardcore Slalom<br/><span style="font-size:0.8rem; font-weight:normal;">All 25 Challenges</span>
                         </button>
                     </div>
 
                     <button class="start-btn" @onclick="() => StartRun(SelectedRunLength)">
-                        Launch Runner
+                        Launch Ski Slalom
                     </button>
                 </div>
             }
@@ -64,7 +64,13 @@
                     <div class="hud-metric">
                         Distance: <span>@((int)Distance)m</span> / @((int)TotalDistance)m
                     </div>
-                    <div class="hud-metric">
+                    <div class="hud-metric" style="margin-left: 20px;">
+                        Crystals: <span style="color: #00f0ff;">@CrystalCount</span>
+                    </div>
+                    <div class="hud-metric" style="margin-left: 20px;">
+                        Multiplier: <span style="color: #ffbb00;">x@ScoreMultiplier</span>
+                    </div>
+                    <div class="hud-metric" style="margin-left: auto;">
                         Obstacles Cleared: <span>@ActiveObstacleIndex</span> / @ActiveChallenges.Count
                     </div>
                 </div>
@@ -76,29 +82,77 @@
                     <div class="parallax-layer layer-skyline"></div>
                     <div class="parallax-layer layer-grid"></div>
 
-                    <!-- Player Sprite -->
-                    <div class="player-sprite @(Stage == GameStage.Running ? "running" : "") @(IsJumping ? "jumping" : "") @(IsDashing ? "dashing" : "") @(IsTripping ? "tripping" : "")"
+                    <!-- Procedural Collectibles -->
+                    @foreach (var col in SlopeCollectibles)
+                    {
+                        double offset = (col.PositionMeters - Distance) * 1.5;
+                        @if (offset > -50 && offset < 900 && !col.Collected)
+                        {
+                            <div class="slope-crystal" style="left: calc(100px + @(offset)px); bottom: calc(110px + @(col.YPercent)px);"></div>
+                        }
+                    }
+
+                    <!-- Procedural Hazards -->
+                    @foreach (var haz in SlopeHazards)
+                    {
+                        double offset = (haz.PositionMeters - Distance) * 1.5;
+                        @if (offset > -50 && offset < 900 && !haz.Hit)
+                        {
+                            var hClass = "slope-hazard " + (haz.HazardType == "Rock" ? "rock" : "branch");
+                            <div class="@hClass" style="left: calc(100px + @(offset)px); bottom: @(haz.HazardType == "Rock" ? "110px" : "155px");">
+                                @if (haz.HazardType == "Rock")
+                                {
+                                    <!-- Rock Mound SVG -->
+                                    <svg style="width: 40px; height: 40px;" viewBox="0 0 24 24" fill="none" stroke="#ff0055" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M4 22 L10 12 L14 16 L20 22 Z" />
+                                        <path d="M12 22 L15 17 L18 22" />
+                                    </svg>
+                                }
+                                else
+                                {
+                                    <!-- Low Pine Branch SVG -->
+                                    <svg style="width: 48px; height: 48px;" viewBox="0 0 24 24" fill="none" stroke="#ffbb00" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M22 6 L12 12 L2 9" />
+                                        <path d="M16 9 L12 12" />
+                                        <path d="M8 8.5 L12 12" />
+                                        <path d="M12 12 V22" stroke-width="1.5" />
+                                    </svg>
+                                }
+                            </div>
+                        }
+                    }
+
+                    <!-- Player Skier Sprite -->
+                    <div class="player-sprite @(Stage == GameStage.Running ? "running" : "") @(IsJumping ? "jumping" : "") @(IsTucking ? "tucking" : "") @(IsTripping ? "tripping" : "")"
                          style="color: var(--brand-accent);">
                         <svg class="runner-avatar" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
                             <!-- Helmet/Visor -->
-                            <rect x="24" y="6" width="16" height="12" rx="4" fill="#000" stroke="var(--brand-accent)" stroke-width="3" />
-                            <path d="M28 10 H36" stroke="var(--brand-accent)" stroke-width="2" />
-                            <!-- Torso -->
-                            <path d="M32 18 L32 38" stroke="#fff" />
-                            <!-- Arms -->
-                            <path d="M32 22 L20 28 L14 22" stroke="#fff" />
-                            <path d="M32 22 L42 26 L48 34" stroke="#fff" />
-                            <!-- Legs -->
+                            <rect x="26" y="4" width="16" height="12" rx="4" fill="#000" stroke="var(--brand-accent)" stroke-width="3" />
+                            <path d="M30 8 H38" stroke="var(--brand-accent)" stroke-width="2" />
+                            <!-- Torso (leaning forward for skiing) -->
+                            <path d="M34 16 L28 36" stroke="#fff" />
+                            <!-- Ski Poles -->
+                            <path d="M22 24 L14 44" stroke="#ffbb00" stroke-width="2" />
+                            <path d="M26 24 L34 46" stroke="#ffbb00" stroke-width="2" />
+                            <!-- Skier Legs -->
                             @if (IsJumping)
                             {
-                                <path d="M32 38 L20 44 L16 38" stroke="#fff" />
-                                <path d="M32 38 L40 44 L44 38" stroke="#fff" />
+                                <path d="M28 36 L16 42 L24 40" stroke="#fff" />
+                                <path d="M28 36 L36 42 L42 40" stroke="#fff" />
+                            }
+                            else if (IsTucking)
+                            {
+                                <path d="M28 36 L16 38 L20 44" stroke="#fff" />
+                                <path d="M28 36 L24 38 L28 44" stroke="#fff" />
                             }
                             else
                             {
-                                <path d="M32 38 L24 46 L30 56" stroke="#fff" />
-                                <path d="M32 38 L40 44 L36 54" stroke="#fff" />
+                                <path d="M28 36 L20 44 L28 44" stroke="#fff" />
+                                <path d="M28 36 L32 44 L36 44" stroke="#fff" />
                             }
+                            <!-- Skis underneath feet -->
+                            <path d="M8 48 L46 48 L52 44" stroke="#00f0ff" stroke-width="4.5" />
+                            <path d="M12 51 L50 51 L56 47" stroke="#00f0ff" stroke-width="4.5" />
                         </svg>
                     </div>
 
@@ -183,7 +237,7 @@
                         }
                     }
 
-                    <!-- Floor -->
+                    <!-- Floor Downhill Snow -->
                     <div class="game-floor">
                         <div class="floor-grid-lines"></div>
                     </div>
@@ -342,7 +396,7 @@
     {
         <div class="evaluation-overlay animate-fade">
             <div class="loading-spinner"></div>
-            <h2 style="color: var(--brand-accent);">Crucible Course Complete</h2>
+            <h2 style="color: var(--brand-accent);">Slalom Course Complete</h2>
             <p style="color: var(--text-gray);">Stateless batch evaluation active. Grading matrix...</p>
 
             <div class="terminal-feed">
@@ -357,7 +411,7 @@
     {
         <div class="scoreboard-screen animate-fade">
             <div class="scoreboard-left">
-                <h2>Crucible Performance Scorecard</h2>
+                <h2>Slalom Performance Scorecard</h2>
                 <div class="tier-title @GetTierClass(FinalResult.TotalScore)">@FinalResult.OperatorTier</div>
                 
                 <div style="margin: 20px 0;">
@@ -369,6 +423,11 @@
 
                 <div class="feedback-bubble">
                     "@FinalResult.TierFeedback"
+                </div>
+
+                <div style="display:flex; justify-content:space-between; margin-bottom:20px; font-weight:bold; color:var(--text-white);">
+                    <span>Crystals Collected: @CrystalCount</span>
+                    <span>Bonus Points Added: +@( (CrystalCount * 0.4).ToString("F1") )</span>
                 </div>
 
                 <button class="download-cert-btn" @onclick="DownloadCertificate">

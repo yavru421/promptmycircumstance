@@ -8,6 +8,7 @@ using System.Linq;
 using PromptMyCircumstance.Models;
 using PromptMyCircumstance.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
 
 namespace PromptMyCircumstance.Pages
@@ -78,16 +79,35 @@ namespace PromptMyCircumstance.Pages
         private GameStage Stage = GameStage.Setup;
         private GamePlayMode SelectedPlayMode = GamePlayMode.Runner;
         
-        // Runner Mode variables
+        public class GameCollectible
+        {
+            public double PositionMeters { get; set; }
+            public double YPercent { get; set; }
+            public bool Collected { get; set; }
+        }
+
+        public class GameHazard
+        {
+            public double PositionMeters { get; set; }
+            public string HazardType { get; set; } = "Rock"; // "Rock", "Branch"
+            public bool Hit { get; set; }
+        }
+
+        // Runner (Ski Slalom) Mode variables
         private int SelectedRunLength = 5;
         private double Distance = 0;
-        private double TotalDistance = 1000;
+        private double TotalDistance = 10000;
         private bool IsJumping = false;
-        private bool IsDashing = false;
+        private bool IsTucking = false;
         private bool IsTripping = false;
         private HashSet<int> TrippedObstacleIndices = new();
         private List<ChallengePayload> ActiveChallenges = new();
         private int ActiveObstacleIndex = 0;
+        
+        private List<GameCollectible> SlopeCollectibles = new();
+        private List<GameHazard> SlopeHazards = new();
+        private int CrystalCount = 0;
+        private int ScoreMultiplier = 1;
         private string CurrentDirective = "";
 
         // Classic Mode variables
@@ -406,6 +426,11 @@ namespace PromptMyCircumstance.Pages
                 c.EvaluationSchema.EvaluatorInputs.AiFailureAnalysis = string.Empty;
             }
 
+            TrippedObstacleIndices.Clear();
+            SlopeCollectibles.Clear();
+            SlopeHazards.Clear();
+            CrystalCount = 0;
+            ScoreMultiplier = 1;
             Distance = 0;
             ActiveObstacleIndex = 0;
             CurrentDirective = "";
@@ -413,15 +438,111 @@ namespace PromptMyCircumstance.Pages
             ActivePhaseLogs.Clear();
             FinalResult = null;
 
+            TotalDistance = length * 2000;
+
+            // Generate ski slope elements procedurally between obstacles
+            for (int i = 0; i < length; i++)
+            {
+                double sectionStart = i * 2000 + 300;
+                double sectionEnd = (i + 1) * 2000 - 300;
+
+                // Spawns 4 collectibles per section
+                int numCollectibles = 4;
+                for (int c = 0; c < numCollectibles; c++)
+                {
+                    double pos = sectionStart + (c + 1) * ((sectionEnd - sectionStart) / (numCollectibles + 1));
+                    SlopeCollectibles.Add(new GameCollectible 
+                    { 
+                        PositionMeters = pos, 
+                        YPercent = 25 + rnd.Next(0, 30), 
+                        Collected = false 
+                    });
+                }
+
+                // Spawns 2 hazards per section
+                SlopeHazards.Add(new GameHazard 
+                { 
+                    PositionMeters = sectionStart + 400 + rnd.Next(-100, 100), 
+                    HazardType = rnd.Next(2) == 0 ? "Rock" : "Branch", 
+                    Hit = false 
+                });
+
+                SlopeHazards.Add(new GameHazard 
+                { 
+                    PositionMeters = sectionStart + 1100 + rnd.Next(-100, 100), 
+                    HazardType = rnd.Next(2) == 0 ? "Rock" : "Branch", 
+                    Hit = false 
+                });
+            }
+
             _ = RunGameLoop();
+        }
+
+        private async Task TriggerJump()
+        {
+            if (IsJumping || IsTucking || IsTripping) return;
+            IsJumping = true;
+            StateHasChanged();
+            await Task.Delay(850);
+            IsJumping = false;
+            StateHasChanged();
+        }
+
+        private async Task TriggerSlide()
+        {
+            if (IsJumping || IsTucking || IsTripping) return;
+            IsTucking = true;
+            StateHasChanged();
+            await Task.Delay(850);
+            IsTucking = false;
+            StateHasChanged();
         }
 
         private async Task RunGameLoop()
         {
             while (Stage == GameStage.Running)
             {
-                Distance += 10;
+                Distance += 25;
 
+                // 1. Check Collectibles collisions
+                foreach (var col in SlopeCollectibles)
+                {
+                    if (!col.Collected && Math.Abs(Distance - col.PositionMeters) < 30)
+                    {
+                        col.Collected = true;
+                        CrystalCount++;
+                        ScoreMultiplier = 1 + (CrystalCount / 4);
+                        ActivePhaseLogs.Add($"[COLLECT] Crystal acquired! Multiplier: x{ScoreMultiplier}");
+                    }
+                }
+
+                // 2. Check Hazards collisions
+                foreach (var haz in SlopeHazards)
+                {
+                    if (!haz.Hit && Math.Abs(Distance - haz.PositionMeters) < 30)
+                    {
+                        haz.Hit = true;
+                        bool avoided = false;
+                        if (haz.HazardType == "Rock" && IsJumping) avoided = true;
+                        if (haz.HazardType == "Branch" && IsTucking) avoided = true;
+
+                        if (!avoided)
+                        {
+                            IsTripping = true;
+                            ScoreMultiplier = Math.Max(1, ScoreMultiplier - 1);
+                            ActivePhaseLogs.Add($"[WIPEOUT] Collided with low-lying {haz.HazardType}! Multiplier decreased.");
+                            StateHasChanged();
+                            await Task.Delay(1500);
+                            IsTripping = false;
+                        }
+                        else
+                        {
+                            ActivePhaseLogs.Add($"[EVADE] Cleared {haz.HazardType} obstacle smoothly.");
+                        }
+                    }
+                }
+
+                // 3. Check major obstacle checkpoints
                 double targetDistance = TotalDistance;
                 if (ActiveObstacleIndex < ActiveChallenges.Count)
                 {
@@ -491,14 +612,14 @@ namespace PromptMyCircumstance.Pages
                 }
                 else
                 {
-                    IsDashing = true;
+                    IsTucking = true;
                 }
 
                 StateHasChanged();
-                await Task.Delay(800);
+                await Task.Delay(1000);
 
                 IsJumping = false;
-                IsDashing = false;
+                IsTucking = false;
             }
 
             ActiveObstacleIndex++;
@@ -603,10 +724,11 @@ namespace PromptMyCircumstance.Pages
                 }
 
                 double averageScore = totalScoreSum / ActiveChallenges.Count;
+                double finalScore = Math.Min(100.0, averageScore + (CrystalCount * 0.4));
 
                 FinalResult = new EvaluationResult
                 {
-                    TotalScore = averageScore
+                    TotalScore = finalScore
                 };
 
                 if (averageScore >= 90.0)
@@ -663,10 +785,11 @@ namespace PromptMyCircumstance.Pages
                 }
 
                 double averageScore = totalScoreSum / ActiveChallenges.Count;
+                double finalScore = Math.Min(100.0, averageScore + (CrystalCount * 0.4));
 
                 FinalResult = new EvaluationResult
                 {
-                    TotalScore = averageScore
+                    TotalScore = finalScore
                 };
 
                 if (averageScore >= 90.0)
@@ -736,6 +859,19 @@ namespace PromptMyCircumstance.Pages
                 return "var(--brand-emerald)";
             }
             return "var(--brand-crimson)";
+        }
+
+        private void HandleKeyDown(KeyboardEventArgs e)
+        {
+            if (Stage != GameStage.Running) return;
+            if (e.Key == " " || e.Key == "ArrowUp")
+            {
+                _ = TriggerJump();
+            }
+            else if (e.Key == "ArrowDown" || e.Key == "Shift")
+            {
+                _ = TriggerSlide();
+            }
         }
     }
 }

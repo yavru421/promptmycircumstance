@@ -108,3 +108,16 @@ Implemented full glassmorphism bento-box design. Added prominent compile overlay
 - **Action**: Implemented robust client-side fallback grading in `Index.razor.cs` and domain-themed SVG obstacles (bugs, barricades, wrenches, warning dialogs, checkered flag) in `Index.razor`.
 - **Goal**: Guarantee the user always receives their scorecard and certificate (even on server timeouts/errors), and make the visual runner gameplay significantly more impressive and distinct.
 - **Status**: Committed and pushed to main. Cloudflare Page CI building live.
+
+## 2026-07-12 12:50:00 (Classic Mode Switcher, PDF Gen, Prompt Validation, and Tumbling Crash)
+
+- **Role**: Lead Systems Architect & Gameplay Programmer
+- **Action**: 
+  - Restored 100% of the classic bento-box workbench layout, supporting both single-challenge local dispatch, navigation (Prev/Next), and batch evaluation.
+  - Added a "Play Mode" toggle on the setup screen to let the user select between Classic Workbench and 3D Synthwave Runner.
+  - Integrated `jsPDF` library client-side via index.html and refactored `zla-interop.js` to compile the dark-mode cyber canvas certificate directly into a landscape PDF document.
+  - Upgraded the horizontal runner to a retro-synthwave style with scrolling stars (dual-layer parallax), 3D perspective rotated grid floor, neon particle trails, and floating animated obstacles.
+  - Designed an actionability filter on prompt submission (verifying length >= 15 and verb inclusion); if failed, the runner trips and tumbles in a hilarious 360-degree crash animation, imposing a 40% cap penalty on that obstacle.
+- **Goal**: Satisfy all user styling feedback, resolve the PDF certificate download request, restore the original bento workbench, and gamify the runner with real stakes (trip/crash penalty).
+- **Status**: Committed and pushed to main. CI build active.
+

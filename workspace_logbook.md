@@ -69,3 +69,7 @@
 
 
 
+
+## Fixed API Error 
+evaluationResponse.response.trim is not a function was caused by hallucinated Qwen model string. Switched model to @cf/meta/llama-3.1-8b-instruct and added a check if the response format is missing.
+

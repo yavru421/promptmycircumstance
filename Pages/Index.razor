@@ -11,17 +11,17 @@
         var current = Challenges[CurrentIndex];
         
         <div class="crucible-header">
-            <h1 class="neon-text-blue">Prompt My Circumstance</h1>
+            <h1 class="brand-title">Prompt My <span class="accent">Circumstance</span></h1>
             <div class="challenge-nav">
-                <button @onclick="PrevChallenge" disabled="@(CurrentIndex == 0)">&#9664; Prev</button>
-                <span>Circumstance @(CurrentIndex + 1) / @Challenges.Count</span>
-                <button @onclick="NextChallenge" disabled="@(CurrentIndex == Challenges.Count - 1)">Next &#9654;</button>
+                <button class="sheet-btn" @onclick="PrevChallenge" disabled="@(CurrentIndex == 0)">&#9664; Prev</button>
+                <span style="font-weight: 600; color: var(--text-white);">Circumstance @(CurrentIndex + 1) / @Challenges.Count</span>
+                <button class="sheet-btn" @onclick="NextChallenge" disabled="@(CurrentIndex == Challenges.Count - 1)">Next &#9654;</button>
             </div>
         </div>
 
-        <div class="crucible-grid">
+        <div class="crucible-grid bento-box">
             <!-- Left: Observed Circumstance -->
-            <div class="panel challenge-panel">
+            <div class="panel challenge-panel glass-panel">
                 <h2>@current.Title</h2>
                 <div class="badge-row">
                     <span class="badge domain">@current.DomainTag</span>
@@ -34,33 +34,33 @@
             </div>
 
             <!-- Center: Operator Workspace -->
-            <div class="panel operator-panel">
+            <div class="panel operator-panel glass-panel">
                 <h3>Your Instruction to the Agent</h3>
-                <textarea @bind="UserPrompt" placeholder="Type instruction to resolve this circumstance..."></textarea>
+                <textarea @bind="UserPrompt" placeholder="Type instruction to resolve this circumstance..." disabled="@IsRunning"></textarea>
                 
-                <button class="submit-btn" @onclick="RunLocalEvaluationLoop" disabled="@IsRunning">
+                <button class="submit-btn @(IsRunning ? "running" : "")" @onclick="RunLocalEvaluationLoop" disabled="@IsRunning">
                     @(IsRunning ? "Agent Resolving Circumstance..." : "Dispatch Agent")
                 </button>
 
                 @if (!string.IsNullOrEmpty(ActualAiOutput))
                 {
-                    <h3 style="margin-top:20px; color:var(--neon-amber);">Agent Response / Resolution</h3>
-                    <div class="gold-box" style="border-left-color: var(--neon-blue);">
+                    <h3 style="margin-top:20px; color:var(--brand-accent);">Agent Response / Resolution</h3>
+                    <div class="gold-box" style="border-left-color: var(--brand-accent);">
                         @ActualAiOutput
                     </div>
                 }
             </div>
 
             <!-- Right: Scoreboard -->
-            <div class="panel scoreboard-panel">
+            <div class="panel scoreboard-panel glass-panel">
                 <h3>Instruction Efficiency Matrix</h3>
                 
                 @if (Result != null)
                 {
                     <div class="score-summary animate-fade">
                         <h2 class="@GetTierClass(Result.TotalScore)">@Result.OperatorTier</h2>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: @(AnimationPercentage)%"></div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill" style="width: @(AnimationPercentage)%"></div>
                         </div>
                         <p class="cyber-feedback">@Result.TierFeedback</p>
                         
@@ -95,6 +95,23 @@
                 </div>
             </div>
         </div>
+
+        @if (IsRunning)
+        {
+            <div class="compile-overlay">
+                <div class="compile-status-card">
+                    <div class="spinner-modern"></div>
+                    <h3>Dispatching Payload...</h3>
+                    <p>The AI Worker is evaluating your prompt.</p>
+                    <div class="terminal-feed" style="text-align: left; width: 100%; margin-top: 10px;">
+                        @foreach (var log in ActivePhaseLogs)
+                        {
+                            <div class="terminal-line">@log</div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
     }
     else
     {

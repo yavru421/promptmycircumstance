@@ -53,33 +53,73 @@
 
             <!-- Right: Scoreboard -->
             <div class="panel scoreboard-panel glass-panel">
-                <h3>Instruction Efficiency Matrix</h3>
-                
-                @if (Result != null)
+                @if (IsTestGraded)
                 {
-                    <div class="score-summary animate-fade">
-                        <h2 class="@GetTierClass(Result.TotalScore)">@Result.OperatorTier</h2>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar-fill" style="width: @(AnimationPercentage)%"></div>
-                        </div>
-                        <p class="cyber-feedback">@Result.TierFeedback</p>
-                        
-                        @if (AnimationPercentage >= 100 && CurrentIndex == Challenges.Count - 1)
-                        {
-                            <button class="download-cert-btn animate-fade" @onclick="DownloadCertificate">
-                                Download Operator Certificate
-                            </button>
-                        }
-                        
-                        <div class="metric-breakdown">
-                            @foreach (var metric in Result.Metrics)
+                    <h3>Instruction Efficiency Matrix</h3>
+                    @if (Result != null)
+                    {
+                        <div class="score-summary animate-fade">
+                            <h2 class="@GetTierClass(Result.TotalScore)">@Result.OperatorTier</h2>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill" style="width: @(AnimationPercentage)%"></div>
+                            </div>
+                            <p class="cyber-feedback">@Result.TierFeedback</p>
+                            
+                            @if (CurrentIndex == Challenges.Count - 1 && FinalResult != null)
                             {
-                                <div class="metric-row">
-                                    <span>@metric.CriteriaName</span>
-                                    <span>@metric.PointsEarned.ToString("F1") / @metric.MaxPoints</span>
+                                <div style="margin-bottom: 20px; text-align: center;">
+                                    <h4 style="color: var(--neon-matrix-green); margin-bottom: 5px;">Overall Matrix Score: @FinalResult.TotalScore.ToString("F1")/100</h4>
+                                    <p style="font-size: 0.9rem; color: var(--text-gray); margin-bottom: 15px;">Overall Tier: @FinalResult.OperatorTier</p>
+                                    <button class="download-cert-btn animate-fade" @onclick="DownloadCertificate">
+                                        Download Operator Certificate
+                                    </button>
                                 </div>
                             }
+                            
+                            <div class="metric-breakdown">
+                                @foreach (var metric in Result.Metrics)
+                                {
+                                    <div class="metric-row">
+                                        <span>@metric.CriteriaName</span>
+                                        <span>@metric.PointsEarned.ToString("F1") / @metric.MaxPoints</span>
+                                    </div>
+                                }
+                            </div>
                         </div>
+                    }
+                }
+                else
+                {
+                    <h3>Matrix Evaluation Sheet</h3>
+                    <div class="batch-status-panel animate-fade">
+                        <div class="metric-breakdown" style="margin-bottom: 20px;">
+                            <div class="metric-row">
+                                <span>Circumstances Attempted</span>
+                                <span>@Challenges.Count(c => !string.IsNullOrEmpty(c.EvaluationSchema.EvaluatorInputs.CapturedOutputString)) / @Challenges.Count</span>
+                            </div>
+                            <div class="metric-row">
+                                <span>Staged Instructions</span>
+                                <span>@Challenges.Count(c => !string.IsNullOrEmpty(c.EvaluationSchema.EvaluatorInputs.RawPromptText)) / @Challenges.Count</span>
+                            </div>
+                        </div>
+
+                        @if (CurrentIndex == Challenges.Count - 1)
+                        {
+                            <div class="submit-block" style="text-align: center; margin-top: 30px;">
+                                <p style="font-size: 0.9rem; color: var(--text-gray); margin-bottom: 15px;">
+                                    Verify you have dispatched the agent for all circumstances before final submission.
+                                </p>
+                                <button class="submit-btn" style="background: var(--neon-matrix-green); color: black;" @onclick="SubmitBatchEvaluation" disabled="@IsRunning">
+                                    @(IsRunning ? "Evaluating Matrix..." : "Submit Test & Grade Matrix")
+                                </button>
+                            </div>
+                        }
+                        else
+                        {
+                            <p style="font-size: 0.9rem; color: var(--text-gray); text-align: center; margin-top: 20px;">
+                                Navigate through all 25 circumstances. Use "Dispatch Agent" on each to test your instructions. You can review and edit any staged instruction before submitting on the final screen.
+                            </p>
+                        }
                     </div>
                 }
 

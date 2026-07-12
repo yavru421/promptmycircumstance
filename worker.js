@@ -7,7 +7,6 @@ export default {
                 const body = await request.json();
                 const userPrompt = body.userPrompt || "";
                 const rawTelemetry = body.rawTelemetry || "";
-                const goldStandard = body.goldStandard || "";
 
                 if (!userPrompt || !rawTelemetry) {
                     return new Response(JSON.stringify({ error: "Missing userPrompt or rawTelemetry payload." }), {
@@ -16,16 +15,14 @@ export default {
                     });
                 }
 
-                // -------------------------------------------------------------
-                // PIPELINE STAGE 1: Execution Sandbox (Llama-4-Scout)
-                // -------------------------------------------------------------
+                // Stage 1 Execution Sandbox using llama-3.2-3b-instruct (cheap, fast, interactive)
                 const executionSystemPrompt = `You are a strict, bare-metal execution node. Process the raw data strictly according to Operator Instructions. 
 CRITICAL RULES:
 - Output ONLY the direct resolution (code, commands, or data).
 - ZERO conversational filler. ZERO intro/outro text.
 - Do not wrap the output in markdown unless explicitly requested.`;
                 
-                const executionResponse = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
+                const executionResponse = await env.AI.run("@cf/meta/llama-3.2-3b-instruct", {
                     messages: [
                         { role: "system", content: executionSystemPrompt },
                         { role: "user", content: `Raw Data:\n${rawTelemetry}\n\nOperator Instructions:\n${userPrompt}` }
@@ -34,50 +31,68 @@ CRITICAL RULES:
 
                 const executionResult = executionResponse.response;
 
-                // -------------------------------------------------------------
-                // PIPELINE STAGE 2: Real-World Resolution Judge (QwQ-32B)
-                // -------------------------------------------------------------
-                               const evaluationSystemPrompt = `You are an expert calibrated AI judge assessing the quality of the agent's output in resolving a specific circumstance.
-You will be provided with:
-- THE CIRCUMSTANCE (The raw observed symptom or problem)
-- OPERATOR PROMPT (The instruction written by the user)
-- ACTUAL AI EXECUTION RESULT (What the agent produced)
-- TARGET GOLD STANDARD OUTCOME (The expected result/resolution)
+                return new Response(JSON.stringify({
+                    execution_result: executionResult
+                }), {
+                    headers: { "Content-Type": "application/json" }
+                });
 
-Your goal is to evaluate the ACTUAL AI EXECUTION RESULT and grade how effectively it directly resolves the CIRCUMSTANCE.
+            } catch (err) {
+                return new Response(JSON.stringify({ error: err.message }), {
+                    status: 500,
+                    headers: { "Content-Type": "application/json" }
+                });
+            }
+        }
 
-You must respond in raw JSON format. Do not write any markdown codeblocks or conversational text. Return exactly this JSON structure:
-{
-  "failure_analysis": "<Analyze if the ACTUAL RESULT successfully resolves the CIRCUMSTANCE. Detail any actual failures here. If it successfully resolves the problem, return 'None'>",
-  "actionability_score": <float between 0.00 and 1.00 indicating if the output contains a direct, immediately usable solution like code, commands, or clear workflows with zero translation needed>,
-  "constraint_adherence_score": <float between 0.00 and 1.00. If no specific files or variables were provided in the circumstance, DO NOT deduct points for the agent using logical hypothetical files/examples to demonstrate the solution. Only deduct if it violated explicit constraints>,
-  "target_alignment_score": <float between 0.00 and 1.00 indicating if the output logically resolves the specific symptom or goal described in the circumstance>
-}
+        if (url.pathname === "/api/evaluate_batch" && request.method === "POST") {
+            try {
+                const body = await request.json();
+                const items = body.items || [];
 
-Example JSON Response:
-{
-  "failure_analysis": "None",
-  "actionability_score": 0.9,
-  "constraint_adherence_score": 1.0,
-  "target_alignment_score": 1.0
-}
+                if (items.length === 0) {
+                    return new Response(JSON.stringify({ error: "No items provided for evaluation." }), {
+                        status: 400,
+                        headers: { "Content-Type": "application/json" }
+                    });
+                }
 
-Be fair and direct:
-- Score the ACTUAL AI EXECUTION RESULT based on its quality in resolving the circumstance.
-- If the circumstance is vague, praise the agent for using logical hypothetical files to illustrate the organization or solution.
+                // Batch evaluation system prompt for Qwen or Llama 3.1 8B
+                const evaluationSystemPrompt = `You are an expert calibrated AI judge assessing the quality of the agent's output across a series of circumstantial challenges.
+For each challenge, you are provided with its ID, the circumstance problem description, the operator prompt, the actual agent execution result, and the target gold standard outcome.
+
+Grade each challenge and return a JSON array matching exactly this JSON structure, with absolutely zero markdown codeblocks or conversational filler:
+[
+  {
+    "challenge_id": "<ID of the challenge>",
+    "failure_analysis": "<Briefly analyze if the ACTUAL RESULT successfully resolves the CIRCUMSTANCE. Return 'None' if successful>",
+    "actionability_score": <float between 0.00 and 1.00 indicating if the output contains direct usable code, commands, or clear workflows with zero translation needed>,
+    "target_alignment_score": <float between 0.00 and 1.00 indicating if the output logically resolves the specific symptom or goal described in the circumstance>
+  }
+]
+
+Be fair:
+- If no specific files or variables were provided in the circumstance, DO NOT deduct points for the agent using logical hypothetical files/examples to illustrate the solution.
 - Only deduct from target_alignment_score if the response fails to address the root problem.`;
 
-                const evaluationUserMessage = `THE CIRCUMSTANCE:
-"${rawTelemetry}"
+                let evaluationUserMessage = "Evaluate the following challenges:\n\n";
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    evaluationUserMessage += `---
+CHALLENGE INDEX: ${i + 1}
+CHALLENGE ID: "${item.id}"
+THE CIRCUMSTANCE:
+"${item.rawTelemetry}"
 
 OPERATOR PROMPT:
-"${userPrompt}"
+"${item.userPrompt}"
 
 ACTUAL AI EXECUTION RESULT:
-"${executionResult}"
+"${item.executionResult}"
 
 TARGET GOLD STANDARD OUTCOME:
-"${goldStandard}"`;
+"${item.goldStandard}"\n\n`;
+                }
 
                 const evaluationResponse = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
                     messages: [
@@ -90,50 +105,29 @@ TARGET GOLD STANDARD OUTCOME:
                     throw new Error(`Invalid AI response: ${JSON.stringify(evaluationResponse)}`);
                 }
 
-                // Parse the JSON output returned by the judge model
                 let judgeText = evaluationResponse.response.trim();
-                
-                // Clean any markdown formatting the model might have wrapped it in
                 if (judgeText.startsWith("```")) {
                     judgeText = judgeText.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
                 }
 
-                let actionability = 0.0;
-                let constraintAdherence = 0.0;
-                let targetAlignment = 0.0;
-                let feedback = "Failed to parse judge evaluation.";
-                
+                let parsedResults = [];
                 try {
-                    const parsedJudge = JSON.parse(judgeText);
-                    actionability = parseFloat(parsedJudge.actionability_score);
-                    constraintAdherence = parseFloat(parsedJudge.constraint_adherence_score);
-                    targetAlignment = parseFloat(parsedJudge.target_alignment_score);
-                    feedback = parsedJudge.failure_analysis || "No analysis provided.";
+                    parsedResults = JSON.parse(judgeText);
                 } catch (parseErr) {
-                    // Fallback heuristics if the LLM output is not valid JSON
-                    feedback = "Evaluator output parse error. Raw judge output: " + judgeText;
-                    
-                    const actionMatch = judgeText.match(/"actionability_score"\s*:\s*([0-9\.]+)/);
-                    if (actionMatch) actionability = parseFloat(actionMatch[1]);
-                    
-                    const constraintMatch = judgeText.match(/"constraint_adherence_score"\s*:\s*([0-9\.]+)/);
-                    if (constraintMatch) constraintAdherence = parseFloat(constraintMatch[1]);
-                    
-                    const targetMatch = judgeText.match(/"target_alignment_score"\s*:\s*([0-9\.]+)/);
-                    if (targetMatch) targetAlignment = parseFloat(targetMatch[1]);
+                    const arrayMatch = judgeText.match(/\[[\s\S]*\]/);
+                    if (arrayMatch) {
+                        try {
+                            parsedResults = JSON.parse(arrayMatch[0]);
+                        } catch (e) {
+                            throw new Error("Failed to parse judge output: " + judgeText);
+                        }
+                    } else {
+                        throw new Error("Failed to parse judge output: " + judgeText);
+                    }
                 }
 
-                // Clamp scores 0.0-1.0
-                actionability = Math.max(0.0, Math.min(1.0, isNaN(actionability) ? 0.0 : actionability));
-                constraintAdherence = Math.max(0.0, Math.min(1.0, isNaN(constraintAdherence) ? 0.0 : constraintAdherence));
-                targetAlignment = Math.max(0.0, Math.min(1.0, isNaN(targetAlignment) ? 0.0 : targetAlignment));
-
                 return new Response(JSON.stringify({
-                    execution_result: executionResult,
-                    actionability_score: actionability,
-                    constraint_adherence_score: constraintAdherence,
-                    target_alignment_score: targetAlignment,
-                    failure_analysis: feedback
+                    results: parsedResults
                 }), {
                     headers: { "Content-Type": "application/json" }
                 });

@@ -93,6 +93,12 @@ namespace PromptMyCircumstance.Pages
             public bool Hit { get; set; }
         }
 
+        public class SlopeDecoration
+        {
+            public double PositionMeters { get; set; }
+            public string Type { get; set; } = "PineTree"; // "PineTree", "FlagRed", "FlagBlue"
+        }
+
         // Runner (Ski Slalom) Mode variables
         private int SelectedRunLength = 5;
         private double Distance = 0;
@@ -106,6 +112,7 @@ namespace PromptMyCircumstance.Pages
         
         private List<GameCollectible> SlopeCollectibles = new();
         private List<GameHazard> SlopeHazards = new();
+        private List<SlopeDecoration> SlopeDecorations = new();
         private int CrystalCount = 0;
         private int ScoreMultiplier = 1;
         private string CurrentDirective = "";
@@ -429,6 +436,7 @@ namespace PromptMyCircumstance.Pages
             TrippedObstacleIndices.Clear();
             SlopeCollectibles.Clear();
             SlopeHazards.Clear();
+            SlopeDecorations.Clear();
             CrystalCount = 0;
             ScoreMultiplier = 1;
             Distance = 0;
@@ -446,33 +454,37 @@ namespace PromptMyCircumstance.Pages
                 double sectionStart = i * 2000 + 300;
                 double sectionEnd = (i + 1) * 2000 - 300;
 
-                // Spawns 4 collectibles per section
-                int numCollectibles = 4;
+                // Spawns 3 collectibles per section
+                int numCollectibles = 3;
                 for (int c = 0; c < numCollectibles; c++)
                 {
                     double pos = sectionStart + (c + 1) * ((sectionEnd - sectionStart) / (numCollectibles + 1));
                     SlopeCollectibles.Add(new GameCollectible 
                     { 
                         PositionMeters = pos, 
-                        YPercent = 25 + rnd.Next(0, 30), 
+                        YPercent = 15 + rnd.Next(0, 20), 
                         Collected = false 
                     });
                 }
 
-                // Spawns 2 hazards per section
+                // Spawns 1 hazard per section
                 SlopeHazards.Add(new GameHazard 
                 { 
-                    PositionMeters = sectionStart + 400 + rnd.Next(-100, 100), 
+                    PositionMeters = sectionStart + 800 + rnd.Next(-100, 100), 
                     HazardType = rnd.Next(2) == 0 ? "Rock" : "Branch", 
                     Hit = false 
                 });
 
-                SlopeHazards.Add(new GameHazard 
-                { 
-                    PositionMeters = sectionStart + 1100 + rnd.Next(-100, 100), 
-                    HazardType = rnd.Next(2) == 0 ? "Rock" : "Branch", 
-                    Hit = false 
-                });
+                // Spawns 5 slalom flags and pine trees decorations per section
+                int numDec = 5;
+                for (int d = 0; d < numDec; d++)
+                {
+                    SlopeDecorations.Add(new SlopeDecoration
+                    {
+                        PositionMeters = sectionStart + d * 350 + rnd.Next(-50, 50),
+                        Type = rnd.Next(3) == 0 ? "FlagRed" : (rnd.Next(2) == 0 ? "FlagBlue" : "PineTree")
+                    });
+                }
             }
 
             _ = RunGameLoop();
@@ -502,7 +514,7 @@ namespace PromptMyCircumstance.Pages
         {
             while (Stage == GameStage.Running)
             {
-                Distance += 25;
+                Distance += 12;
 
                 // 1. Check Collectibles collisions
                 foreach (var col in SlopeCollectibles)

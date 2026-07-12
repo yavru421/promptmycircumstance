@@ -68,7 +68,7 @@
                         Crystals: <span style="color: #00f0ff;">@CrystalCount</span>
                     </div>
                     <div class="hud-metric" style="margin-left: 20px;">
-                        Multiplier: <span style="color: #ffbb00;">x@ScoreMultiplier</span>
+                        Multiplier: <span style="color: #ffbb00;">x@(ScoreMultiplier)</span>
                     </div>
                     <div class="hud-metric" style="margin-left: auto;">
                         Obstacles Cleared: <span>@ActiveObstacleIndex</span> / @ActiveChallenges.Count
@@ -81,6 +81,43 @@
                     <div class="parallax-layer layer-stars"></div>
                     <div class="parallax-layer layer-skyline"></div>
                     <div class="parallax-layer layer-grid"></div>
+
+                    <!-- Procedural Decorations -->
+                    @foreach (var dec in SlopeDecorations)
+                    {
+                        double offset = (dec.PositionMeters - Distance) * 1.5;
+                        @if (offset > -100 && offset < 1000)
+                        {
+                            <div class="slope-decoration" style="position: absolute; left: calc(100px + @(offset)px); bottom: 120px; z-index: 4;">
+                                @if (dec.Type == "PineTree")
+                                {
+                                    <!-- Pine tree covered in snow -->
+                                    <svg style="width: 50px; height: 60px;" viewBox="0 0 50 60" fill="none" stroke="#00f0ff" stroke-width="2">
+                                        <polygon points="25,5 15,22 35,22" fill="rgba(0, 240, 255, 0.15)" stroke="#00f0ff" />
+                                        <polygon points="25,18 8,38 42,38" fill="rgba(0, 240, 255, 0.2)" stroke="#00f0ff" />
+                                        <polygon points="25,32 2,54 48,54" fill="rgba(0, 240, 255, 0.25)" stroke="#00f0ff" />
+                                        <rect x="22" y="54" width="6" height="6" fill="#1a3c5c" stroke="#00f0ff" />
+                                    </svg>
+                                }
+                                else if (dec.Type == "FlagRed")
+                                {
+                                    <!-- Red Slalom Flag -->
+                                    <svg style="width: 25px; height: 50px;" viewBox="0 0 20 40">
+                                        <line x1="4" y1="5" x2="4" y2="40" stroke="#00f0ff" stroke-width="2.5" />
+                                        <polygon points="4,5 18,11 4,17" fill="#ff0055" stroke="#ff0055" />
+                                    </svg>
+                                }
+                                else
+                                {
+                                    <!-- Blue Slalom Flag -->
+                                    <svg style="width: 25px; height: 50px;" viewBox="0 0 20 40">
+                                        <line x1="4" y1="5" x2="4" y2="40" stroke="#00f0ff" stroke-width="2.5" />
+                                        <polygon points="4,5 18,11 4,17" fill="#0088ff" stroke="#0088ff" />
+                                    </svg>
+                                }
+                            </div>
+                        }
+                    }
 
                     <!-- Procedural Collectibles -->
                     @foreach (var col in SlopeCollectibles)

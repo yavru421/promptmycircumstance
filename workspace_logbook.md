@@ -121,3 +121,16 @@ Implemented full glassmorphism bento-box design. Added prominent compile overlay
 - **Goal**: Satisfy all user styling feedback, resolve the PDF certificate download request, restore the original bento workbench, and gamify the runner with real stakes (trip/crash penalty).
 - **Status**: Committed and pushed to main. CI build active.
 
+## 2026-07-12 12:56:00 (Downhill Cyber-Ski Slalom Theme Pivot)
+
+- **Role**: Lead Systems Architect & Gameplay Programmer
+- **Action**:
+  - Pivoted the runner theme to **Downhill Cyber-Ski Slalom**, styling the floor as a rotated (-3deg) tilted snow mountain slope and stars as a diagonal falling snowflake stream.
+  - Redesigned the player avatar into an SVG skier with skis and ski poles, leaning downhill.
+  - Implemented procedural generation of **Neon Crystals** (collectibles) and hazards (**Rock Mounds** to jump over, **Low Pine Branches** to crouch/tuck under) in between obstacles.
+  - Added real-time keyboard inputs (`Space`/`ArrowUp` to Jump, `ArrowDown`/`Shift` to Tuck/Crouch) and hit detection in the game loop.
+  - Designed score multiplier mechanics (increases as Crystals are collected, drops on wipeouts) and added a Crystal count score bonus (up to 15 points) on the final scorecard.
+- **Goal**: Create a highly engaging, visual downhill skiing arcade game with interactive controls, collectibles, and score mechanics.
+- **Status**: Committed and pushed to main. Cloudflare Pages build active.
+
+

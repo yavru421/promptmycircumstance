@@ -17,181 +17,326 @@
     @if (Stage == GameStage.Setup)
     {
         <div class="setup-screen animate-fade">
-            <div class="cyber-card">
-                <h2>Initialize Crucible Run</h2>
-                <p style="color: var(--text-gray); margin-bottom: 24px;">
-                    Select the length of your circumstance runner challenge. Navigate oncoming obstacles by entering directives in real time.
-                </p>
-
-                <div class="mode-selector">
-                    <button class="mode-btn @(SelectedRunLength == 5 ? "active" : "")" @onclick="() => SelectedRunLength = 5">
-                        Casual Run<br/><span style="font-size:0.8rem; font-weight:normal;">5 Challenges</span>
-                    </button>
-                    <button class="mode-btn @(SelectedRunLength == 10 ? "active" : "")" @onclick="() => SelectedRunLength = 10">
-                        Challenger Run<br/><span style="font-size:0.8rem; font-weight:normal;">10 Challenges</span>
-                    </button>
-                    <button class="mode-btn @(SelectedRunLength == 25 ? "active" : "")" @onclick="() => SelectedRunLength = 25">
-                        Hardcore Run<br/><span style="font-size:0.8rem; font-weight:normal;">All 25 Challenges</span>
-                    </button>
-                </div>
-
-                <button class="start-btn" @onclick="() => StartRun(SelectedRunLength)">
-                    Launch Runner
+            <!-- Mode Switcher -->
+            <div class="play-mode-row">
+                <button class="mode-toggle-btn @(SelectedPlayMode == GamePlayMode.Runner ? "active" : "")" @onclick="() => SelectedPlayMode = GamePlayMode.Runner">
+                    Runner Game Mode
+                </button>
+                <button class="mode-toggle-btn @(SelectedPlayMode == GamePlayMode.Classic ? "active" : "")" @onclick="StartClassicMode">
+                    Classic Workbench Mode
                 </button>
             </div>
+
+            @if (SelectedPlayMode == GamePlayMode.Runner)
+            {
+                <div class="cyber-card">
+                    <h2>Initialize Runner Course</h2>
+                    <p style="color: var(--text-gray); margin-bottom: 24px;">
+                        Select the length of your circumstance runner challenge. Navigate oncoming obstacles by entering directives in real time.
+                    </p>
+
+                    <div class="mode-selector">
+                        <button class="mode-btn @(SelectedRunLength == 5 ? "active" : "")" @onclick="() => SelectedRunLength = 5">
+                            Casual Run<br/><span style="font-size:0.8rem; font-weight:normal;">5 Challenges</span>
+                        </button>
+                        <button class="mode-btn @(SelectedRunLength == 10 ? "active" : "")" @onclick="() => SelectedRunLength = 10">
+                            Challenger Run<br/><span style="font-size:0.8rem; font-weight:normal;">10 Challenges</span>
+                        </button>
+                        <button class="mode-btn @(SelectedRunLength == 25 ? "active" : "")" @onclick="() => SelectedRunLength = 25">
+                            Hardcore Run<br/><span style="font-size:0.8rem; font-weight:normal;">All 25 Challenges</span>
+                        </button>
+                    </div>
+
+                    <button class="start-btn" @onclick="() => StartRun(SelectedRunLength)">
+                        Launch Runner
+                    </button>
+                </div>
+            }
         </div>
     }
     else if (Stage == GameStage.Running || Stage == GameStage.Prompting)
     {
-        <div class="game-window animate-fade">
-            <!-- HUD -->
-            <div class="game-hud">
-                <div class="hud-metric">
-                    Distance: <span>@((int)Distance)m</span> / @((int)TotalDistance)m
-                </div>
-                <div class="hud-metric">
-                    Obstacles Cleared: <span>@ActiveObstacleIndex</span> / @ActiveChallenges.Count
-                </div>
-            </div>
-
-            <!-- Parallax Stage -->
-            <div class="game-track">
-                <div class="parallax-layer layer-bg"></div>
-                <div class="parallax-layer layer-skyline"></div>
-                <div class="parallax-layer layer-grid"></div>
-
-                <!-- Player Sprite -->
-                <div class="player-sprite @(Stage == GameStage.Running ? "running" : "") @(IsJumping ? "jumping" : "") @(IsDashing ? "dashing" : "")"
-                     style="color: var(--brand-accent);">
-                    <svg class="runner-avatar" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-                        <!-- Helmet/Visor -->
-                        <rect x="24" y="6" width="16" height="12" rx="4" fill="#000" stroke="var(--brand-accent)" stroke-width="3" />
-                        <path d="M28 10 H36" stroke="var(--brand-accent)" stroke-width="2" />
-                        <!-- Torso -->
-                        <path d="M32 18 L32 38" stroke="#fff" />
-                        <!-- Arms -->
-                        <path d="M32 22 L20 28 L14 22" stroke="#fff" />
-                        <path d="M32 22 L42 26 L48 34" stroke="#fff" />
-                        <!-- Legs -->
-                        @if (IsJumping)
-                        {
-                            <path d="M32 38 L20 44 L16 38" stroke="#fff" />
-                            <path d="M32 38 L40 44 L44 38" stroke="#fff" />
-                        }
-                        else
-                        {
-                            <path d="M32 38 L24 46 L30 56" stroke="#fff" />
-                            <path d="M32 38 L40 44 L36 54" stroke="#fff" />
-                        }
-                    </svg>
+        @if (SelectedPlayMode == GamePlayMode.Runner)
+        {
+            <div class="game-window animate-fade">
+                <!-- HUD -->
+                <div class="game-hud">
+                    <div class="hud-metric">
+                        Distance: <span>@((int)Distance)m</span> / @((int)TotalDistance)m
+                    </div>
+                    <div class="hud-metric">
+                        Obstacles Cleared: <span>@ActiveObstacleIndex</span> / @ActiveChallenges.Count
+                    </div>
                 </div>
 
-                <!-- Oncoming Obstacle / Flag -->
-                @if (ActiveObstacleIndex < ActiveChallenges.Count && ActiveObstacle != null)
-                {
-                    double targetDistance = (ActiveObstacleIndex + 1) * (TotalDistance / (ActiveChallenges.Count + 1));
-                    double offset = (targetDistance - Distance) * 1.5;
-                    @if (offset < 800)
-                    {
-                        var color = GetObstacleColor(ActiveObstacle.DomainTag);
-                        <div class="obstacle-sprite animate-fade" style="left: calc(100px + @(offset)px); border-color: @color; box-shadow: 0 0 15px @color; color: @color;">
-                            @if (ActiveObstacle.DomainTag.Contains("Code", StringComparison.OrdinalIgnoreCase) || 
-                                 ActiveObstacle.DomainTag.Contains("App", StringComparison.OrdinalIgnoreCase) || 
-                                 ActiveObstacle.DomainTag.Contains("System", StringComparison.OrdinalIgnoreCase))
+                <!-- Parallax Stage -->
+                <div class="game-track">
+                    <div class="parallax-layer layer-bg"></div>
+                    <div class="parallax-layer layer-stars"></div>
+                    <div class="parallax-layer layer-skyline"></div>
+                    <div class="parallax-layer layer-grid"></div>
+
+                    <!-- Player Sprite -->
+                    <div class="player-sprite @(Stage == GameStage.Running ? "running" : "") @(IsJumping ? "jumping" : "") @(IsDashing ? "dashing" : "") @(IsTripping ? "tripping" : "")"
+                         style="color: var(--brand-accent);">
+                        <svg class="runner-avatar" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                            <!-- Helmet/Visor -->
+                            <rect x="24" y="6" width="16" height="12" rx="4" fill="#000" stroke="var(--brand-accent)" stroke-width="3" />
+                            <path d="M28 10 H36" stroke="var(--brand-accent)" stroke-width="2" />
+                            <!-- Torso -->
+                            <path d="M32 18 L32 38" stroke="#fff" />
+                            <!-- Arms -->
+                            <path d="M32 22 L20 28 L14 22" stroke="#fff" />
+                            <path d="M32 22 L42 26 L48 34" stroke="#fff" />
+                            <!-- Legs -->
+                            @if (IsJumping)
                             {
-                                <!-- Firewall / Bug Icon -->
-                                <svg style="width: 32px; height: 32px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="2" y="6" width="20" height="12" rx="6" />
-                                    <path d="M12 2 L12 6" />
-                                    <path d="M12 18 L12 22" />
-                                    <path d="M6 3 L8 6" />
-                                    <path d="M18 3 L16 6" />
-                                    <path d="M8 12 H16" />
-                                </svg>
-                            }
-                            else if (ActiveObstacle.DomainTag.Contains("Construction", StringComparison.OrdinalIgnoreCase))
-                            {
-                                <!-- Barricade Icon -->
-                                <svg style="width: 32px; height: 32px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M3 20 L5 4 H19 L21 20" />
-                                    <path d="M2 10 H22" />
-                                    <path d="M2 14 H22" />
-                                </svg>
-                            }
-                            else if (ActiveObstacle.DomainTag.Contains("Auto", StringComparison.OrdinalIgnoreCase))
-                            {
-                                <!-- Wrench Icon -->
-                                <svg style="width: 32px; height: 32px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.77 3.77z" />
-                                </svg>
-                            }
-                            else if (ActiveObstacle.DomainTag.Contains("Interpersonal", StringComparison.OrdinalIgnoreCase))
-                            {
-                                <!-- Dialog Warn Icon -->
-                                <svg style="width: 32px; height: 32px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                                    <path d="M12 7 V11" />
-                                    <circle cx="12" cy="14" r="0.5" fill="currentColor" />
-                                </svg>
+                                <path d="M32 38 L20 44 L16 38" stroke="#fff" />
+                                <path d="M32 38 L40 44 L44 38" stroke="#fff" />
                             }
                             else
                             {
-                                <!-- Warn Triangle Icon -->
-                                <svg style="width: 32px; height: 32px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M12 2 L2 22 H22 Z" />
-                                    <path d="M12 9 L12 13" />
-                                    <path d="M12 17 H12.01" />
-                                </svg>
+                                <path d="M32 38 L24 46 L30 56" stroke="#fff" />
+                                <path d="M32 38 L40 44 L36 54" stroke="#fff" />
                             }
-                        </div>
-                    }
-                }
-                else
-                {
-                    double offset = (TotalDistance - Distance) * 1.5;
-                    @if (offset < 800)
-                    {
-                        <div class="obstacle-sprite animate-fade" style="left: calc(100px + @(offset)px); border-color: var(--brand-emerald); box-shadow: 0 0 15px var(--brand-emerald); color: var(--brand-emerald);">
-                            <!-- Finish Goal Checkered Flag SVG -->
-                            <svg style="width: 32px; height: 32px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
-                                <line x1="4" y1="22" x2="4" y2="15" />
-                            </svg>
-                        </div>
-                    }
-                }
+                        </svg>
+                    </div>
 
-                <!-- Floor -->
-                <div class="game-floor">
-                    <div class="floor-grid-lines"></div>
+                    <!-- Oncoming Obstacle / Flag -->
+                    @if (ActiveObstacleIndex < ActiveChallenges.Count && ActiveObstacle != null)
+                    {
+                        double targetDistance = (ActiveObstacleIndex + 1) * (TotalDistance / (ActiveChallenges.Count + 1));
+                        double offset = (targetDistance - Distance) * 1.5;
+                        @if (offset < 800)
+                        {
+                            var color = GetObstacleColor(ActiveObstacle.DomainTag);
+                            var obstacleClass = "obstacle-sprite animate-fade";
+                            if (ActiveObstacle.DomainTag.Contains("Code") || ActiveObstacle.DomainTag.Contains("App") || ActiveObstacle.DomainTag.Contains("System")) obstacleClass += " bug";
+                            else if (ActiveObstacle.DomainTag.Contains("Construction")) obstacleClass += " barricade";
+                            else if (ActiveObstacle.DomainTag.Contains("Auto")) obstacleClass += " wrench";
+                            else if (ActiveObstacle.DomainTag.Contains("Interpersonal")) obstacleClass += " dialog";
+
+                            <div class="@obstacleClass" style="left: calc(100px + @(offset)px); border-color: @color; box-shadow: 0 0 15px @color; color: @color;">
+                                @if (ActiveObstacle.DomainTag.Contains("Code", StringComparison.OrdinalIgnoreCase) || 
+                                     ActiveObstacle.DomainTag.Contains("App", StringComparison.OrdinalIgnoreCase) || 
+                                     ActiveObstacle.DomainTag.Contains("System", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <!-- Firewall / Bug Icon -->
+                                    <svg style="width: 32px; height: 32px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="2" y="6" width="20" height="12" rx="6" />
+                                        <path d="M12 2 L12 6" />
+                                        <path d="M12 18 L12 22" />
+                                        <path d="M6 3 L8 6" />
+                                        <path d="M18 3 L16 6" />
+                                        <path d="M8 12 H16" />
+                                    </svg>
+                                }
+                                else if (ActiveObstacle.DomainTag.Contains("Construction", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <!-- Barricade Icon -->
+                                    <svg style="width: 32px; height: 32px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M3 20 L5 4 H19 L21 20" />
+                                        <path d="M2 10 H22" />
+                                        <path d="M2 14 H22" />
+                                    </svg>
+                                }
+                                else if (ActiveObstacle.DomainTag.Contains("Auto", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <!-- Wrench Icon -->
+                                    <svg style="width: 32px; height: 32px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.77 3.77z" />
+                                    </svg>
+                                }
+                                else if (ActiveObstacle.DomainTag.Contains("Interpersonal", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <!-- Dialog Warn Icon -->
+                                    <svg style="width: 32px; height: 32px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                        <path d="M12 7 V11" />
+                                        <circle cx="12" cy="14" r="0.5" fill="currentColor" />
+                                    </svg>
+                                }
+                                else
+                                {
+                                    <!-- Warn Triangle Icon -->
+                                    <svg style="width: 32px; height: 32px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 2 L2 22 H22 Z" />
+                                        <path d="M12 9 L12 13" />
+                                        <path d="M12 17 H12.01" />
+                                    </svg>
+                                }
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        double offset = (TotalDistance - Distance) * 1.5;
+                        @if (offset < 800)
+                        {
+                            <div class="obstacle-sprite animate-fade" style="left: calc(100px + @(offset)px); border-color: var(--brand-emerald); box-shadow: 0 0 15px var(--brand-emerald); color: var(--brand-emerald);">
+                                <!-- Finish Goal Checkered Flag SVG -->
+                                <svg style="width: 32px; height: 32px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                                    <line x1="4" y1="22" x2="4" y2="15" />
+                                </svg>
+                            </div>
+                        }
+                    }
+
+                    <!-- Floor -->
+                    <div class="game-floor">
+                        <div class="floor-grid-lines"></div>
+                    </div>
+                </div>
+
+                <!-- Prompting Modal Overlay -->
+                @if (Stage == GameStage.Prompting && ActiveObstacle != null)
+                {
+                    <div class="prompt-overlay">
+                        <div class="prompt-card">
+                            <h3>Obstacle Detected: @ActiveObstacle.Title</h3>
+                            <div class="badge-row">
+                                <span class="badge domain">@ActiveObstacle.DomainTag</span>
+                                <span class="badge difficulty">@(new string('★', ActiveObstacle.DifficultyStars))</span>
+                            </div>
+
+                            <div style="margin-bottom: 10px; font-weight: bold; color: var(--brand-crimson);">Telemetry Circumstance:</div>
+                            <div class="telemetry-box">
+                                @ActiveObstacle.RawTelemetryDump
+                            </div>
+
+                            <textarea @bind="CurrentDirective" placeholder="Type direct instruction/command to bypass this circumstance..." disabled="@IsRunning"></textarea>
+                            
+                            <button class="submit-btn" @onclick="SubmitDirective" disabled="@(IsRunning || string.IsNullOrWhiteSpace(CurrentDirective))">
+                                Dispatch Directive
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <!-- Classic Bento-Box Workbench -->
+            var current = Challenges[CurrentIndex];
+            <div class="crucible-header" style="border:none; margin:0 0 15px 0; padding:0;">
+                <div class="challenge-nav">
+                    <button class="sheet-btn" @onclick="PrevChallenge" disabled="@(CurrentIndex == 0)">&#9664; Prev</button>
+                    <span style="font-weight: 600; color: var(--text-white);">Circumstance @(CurrentIndex + 1) / @Challenges.Count</span>
+                    <button class="sheet-btn" @onclick="NextChallenge" disabled="@(CurrentIndex == Challenges.Count - 1)">Next &#9654;</button>
                 </div>
             </div>
 
-            <!-- Prompting Modal Overlay -->
-            @if (Stage == GameStage.Prompting && ActiveObstacle != null)
-            {
-                <div class="prompt-overlay">
-                    <div class="prompt-card">
-                        <h3>Obstacle Detected: @ActiveObstacle.Title</h3>
-                        <div class="badge-row">
-                            <span class="badge domain">@ActiveObstacle.DomainTag</span>
-                            <span class="badge difficulty">@(new string('★', ActiveObstacle.DifficultyStars))</span>
-                        </div>
-
-                        <div style="margin-bottom: 10px; font-weight: bold; color: var(--brand-crimson);">Telemetry Circumstance:</div>
-                        <div class="telemetry-box">
-                            @ActiveObstacle.RawTelemetryDump
-                        </div>
-
-                        <textarea @bind="CurrentDirective" placeholder="Type direct instruction/command to bypass this circumstance..." disabled="@IsRunning"></textarea>
-                        
-                        <button class="submit-btn" @onclick="SubmitDirective" disabled="@(IsRunning || string.IsNullOrWhiteSpace(CurrentDirective))">
-                            Dispatch Directive
-                        </button>
+            <div class="crucible-grid">
+                <!-- Left: Observed Circumstance -->
+                <div class="panel challenge-panel glass-panel">
+                    <h2>@current.Title</h2>
+                    <div class="badge-row">
+                        <span class="badge domain">@current.DomainTag</span>
+                        <span class="badge difficulty">@(new string('★', current.DifficultyStars))</span>
+                    </div>
+                    <h3>Observed Symptom / Issue</h3>
+                    <div class="telemetry-box" style="color:var(--text-white); border-left-color:var(--brand-crimson);">
+                        @current.RawTelemetryDump
                     </div>
                 </div>
-            }
-        </div>
+
+                <!-- Center: Operator Workspace -->
+                <div class="panel operator-panel glass-panel">
+                    <h3>Your Instruction to the Agent</h3>
+                    <textarea @bind="UserPrompt" placeholder="Type instruction to resolve this circumstance..." disabled="@IsRunning"></textarea>
+                    
+                    <button class="submit-btn" @onclick="RunLocalEvaluationLoop" disabled="@IsRunning">
+                        @(IsRunning ? "Agent Resolving Circumstance..." : "Dispatch Agent")
+                    </button>
+
+                    @if (!string.IsNullOrEmpty(ActualAiOutput))
+                    {
+                        <h3 style="margin-top:20px; color:var(--brand-accent);">Agent Response / Resolution</h3>
+                        <div class="gold-box" style="border-left-color: var(--brand-accent);">
+                            @ActualAiOutput
+                        </div>
+                    }
+                </div>
+
+                <!-- Right: Scoreboard -->
+                <div class="panel scoreboard-panel glass-panel">
+                    @if (FinalResult != null && Result != null)
+                    {
+                        <h3>Instruction Efficiency Matrix</h3>
+                        <div class="score-summary animate-fade">
+                            <h2 class="@GetTierClass(Result.TotalScore)">@Result.OperatorTier</h2>
+                            <p class="cyber-feedback">@Result.TierFeedback</p>
+                            
+                            @if (CurrentIndex == Challenges.Count - 1)
+                            {
+                                <div style="margin-bottom: 20px; text-align: center;">
+                                    <h4 style="color: var(--neon-matrix-green); margin-bottom: 5px;">Overall Matrix Score: @FinalResult.TotalScore.ToString("F1")/100</h4>
+                                    <button class="download-cert-btn animate-fade" @onclick="DownloadCertificate">
+                                        Download Operator Certificate (PDF)
+                                    </button>
+                                </div>
+                            }
+                            
+                            <div class="metric-breakdown">
+                                @foreach (var metric in Result.Metrics)
+                                {
+                                    <div class="metric-row">
+                                        <span>@metric.CriteriaName</span>
+                                        <span>@metric.PointsEarned.ToString("F1") / @metric.MaxPoints</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <h3>Matrix Evaluation Sheet</h3>
+                        <div class="batch-status-panel animate-fade">
+                            <div class="metric-breakdown" style="margin-bottom: 20px;">
+                                <div class="metric-row">
+                                    <span>Circumstances Attempted</span>
+                                    <span>@Challenges.Count(c => !string.IsNullOrEmpty(c.EvaluationSchema.EvaluatorInputs.CapturedOutputString)) / @Challenges.Count</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span>Staged Instructions</span>
+                                    <span>@Challenges.Count(c => !string.IsNullOrEmpty(c.EvaluationSchema.EvaluatorInputs.RawPromptText)) / @Challenges.Count</span>
+                                </div>
+                            </div>
+
+                            @if (CurrentIndex == Challenges.Count - 1)
+                            {
+                                <div class="submit-block" style="text-align: center; margin-top: 30px;">
+                                    <p style="font-size: 0.9rem; color: var(--text-gray); margin-bottom: 15px;">
+                                        Verify you have dispatched the agent for all circumstances before final submission.
+                                    </p>
+                                    <button class="submit-btn" style="background: var(--neon-matrix-green); color: black;" @onclick="SubmitClassicBatchEvaluation" disabled="@IsRunning">
+                                        @(IsRunning ? "Evaluating Matrix..." : "Submit Test & Grade Matrix")
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <p style="font-size: 0.9rem; color: var(--text-gray); text-align: center; margin-top: 20px;">
+                                    Navigate through all 25 circumstances. Use "Dispatch Agent" on each to test your instructions. You can review and edit any staged instruction before submitting on the final screen.
+                                </p>
+                            }
+                        </div>
+                    }
+
+                    <div class="terminal-feed" style="margin-top:20px;">
+                        @foreach (var log in ActivePhaseLogs)
+                        {
+                            <div class="terminal-line">@log</div>
+                        }
+                        @if (ActivePhaseLogs.Count == 0 && Result == null)
+                        {
+                            <div class="terminal-line">Awaiting agent dispatch...</div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
     }
     else if (Stage == GameStage.Evaluating)
     {
@@ -227,7 +372,7 @@
                 </div>
 
                 <button class="download-cert-btn" @onclick="DownloadCertificate">
-                    Download Competency Certificate
+                    Download Competency Certificate (PDF)
                 </button>
 
                 <button class="submit-btn" style="background: rgba(255,255,255,0.05); color: #fff; border: 1px solid var(--glass-border);" @onclick="ResetToSetup">
@@ -238,31 +383,63 @@
             <div class="scoreboard-right">
                 <h3 style="margin-top:0; border-bottom: 1px solid var(--glass-border); padding-bottom: 8px;">Detailed Matrix Breakdown</h3>
                 <div class="detailed-metrics-list">
-                    @foreach (var c in ActiveChallenges)
+                    @if (SelectedPlayMode == GamePlayMode.Runner)
                     {
-                        var cScore = Engine.Evaluate(c.EvaluationSchema);
-                        <div class="metric-card">
-                            <div class="metric-card-header">
-                                <span>@c.Title</span>
-                                <span style="color: var(--brand-accent);">@cScore.TotalScore.ToString("F1")/100</span>
-                            </div>
-                            <div style="font-size:0.85rem; color:#888; margin-bottom:8px;">
-                                Directive: <span style="color:#fff; font-family: monospace;">"@c.EvaluationSchema.EvaluatorInputs.RawPromptText"</span>
-                            </div>
-                            @if (!string.IsNullOrEmpty(c.EvaluationSchema.EvaluatorInputs.AiFailureAnalysis) && 
-                                 !c.EvaluationSchema.EvaluatorInputs.AiFailureAnalysis.Equals("None", StringComparison.OrdinalIgnoreCase))
-                            {
-                                <div class="metric-card-body" style="border-left-color: var(--brand-crimson);">
-                                    Judge Diagnosis: @c.EvaluationSchema.EvaluatorInputs.AiFailureAnalysis
+                        @foreach (var c in ActiveChallenges)
+                        {
+                            var cScore = Engine.Evaluate(c.EvaluationSchema);
+                            <div class="metric-card">
+                                <div class="metric-card-header">
+                                    <span>@c.Title</span>
+                                    <span style="color: var(--brand-accent);">@cScore.TotalScore.ToString("F1")/100</span>
                                 </div>
-                            }
-                            else
-                            {
-                                <div class="metric-card-body" style="border-left-color: var(--brand-emerald);">
-                                    PASS: Directive successfully resolved circumstance with zero semantic drift.
+                                <div style="font-size:0.85rem; color:#888; margin-bottom:8px;">
+                                    Directive: <span style="color:#fff; font-family: monospace;">"@c.EvaluationSchema.EvaluatorInputs.RawPromptText"</span>
                                 </div>
-                            }
-                        </div>
+                                @if (!string.IsNullOrEmpty(c.EvaluationSchema.EvaluatorInputs.AiFailureAnalysis) && 
+                                     !c.EvaluationSchema.EvaluatorInputs.AiFailureAnalysis.Equals("None", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <div class="metric-card-body" style="border-left-color: var(--brand-crimson);">
+                                        Judge Diagnosis: @c.EvaluationSchema.EvaluatorInputs.AiFailureAnalysis
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="metric-card-body" style="border-left-color: var(--brand-emerald);">
+                                        PASS: Directive successfully resolved circumstance with zero semantic drift.
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        @foreach (var c in Challenges)
+                        {
+                            var cScore = Engine.Evaluate(c.EvaluationSchema);
+                            <div class="metric-card">
+                                <div class="metric-card-header">
+                                    <span>@c.Title</span>
+                                    <span style="color: var(--brand-accent);">@cScore.TotalScore.ToString("F1")/100</span>
+                                </div>
+                                <div style="font-size:0.85rem; color:#888; margin-bottom:8px;">
+                                    Directive: <span style="color:#fff; font-family: monospace;">"@c.EvaluationSchema.EvaluatorInputs.RawPromptText"</span>
+                                </div>
+                                @if (!string.IsNullOrEmpty(c.EvaluationSchema.EvaluatorInputs.AiFailureAnalysis) && 
+                                     !c.EvaluationSchema.EvaluatorInputs.AiFailureAnalysis.Equals("None", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <div class="metric-card-body" style="border-left-color: var(--brand-crimson);">
+                                        Judge Diagnosis: @c.EvaluationSchema.EvaluatorInputs.AiFailureAnalysis
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="metric-card-body" style="border-left-color: var(--brand-emerald);">
+                                        PASS: Directive successfully resolved circumstance with zero semantic drift.
+                                    </div>
+                                }
+                            </div>
+                        }
                     }
                 </div>
             </div>

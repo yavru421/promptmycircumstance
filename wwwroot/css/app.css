@@ -1022,7 +1022,7 @@ body, html {
     flex-direction: column;
     padding: 20px;
     box-sizing: border-box;
-    background: radial-gradient(circle at top center, #11111a 0%, #000 100%);
+    background: radial-gradient(circle at top center, #111122 0%, #000 100%);
     overflow: hidden;
 }
 
@@ -1033,6 +1033,33 @@ body, html {
     border-bottom: 1px solid rgba(255,255,255,0.1);
     padding-bottom: 15px;
     margin-bottom: 10px;
+}
+
+/* PLAY MODE SWITCHER */
+.play-mode-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    justify-content: center;
+    width: 100%;
+}
+
+.mode-toggle-btn {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #8b949e;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.mode-toggle-btn.active {
+    background: rgba(0, 240, 255, 0.15);
+    color: hsl(190, 90%, 65%);
+    border-color: hsl(190, 90%, 65%);
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
 }
 
 /* SETUP SCREEN */
@@ -1046,26 +1073,26 @@ body, html {
 }
 
 .cyber-card {
-    background: rgba(22, 27, 34, 0.4);
+    background: rgba(15, 15, 25, 0.7);
     border: 1px solid rgba(255,255,255,0.1);
     border-radius: 24px;
     padding: 48px;
     max-width: 600px;
     width: 100%;
     backdrop-filter: blur(20px);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
 }
 
 .mode-selector {
     display: flex;
     gap: 16px;
-    margin: 32px 0;
+    margin: 24px 0 32px 0;
     justify-content: center;
 }
 
 .mode-btn {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
     color: #fff;
     padding: 16px 24px;
     border-radius: 12px;
@@ -1116,7 +1143,7 @@ body, html {
     border: 2px solid rgba(255,255,255,0.1);
     border-radius: 20px;
     overflow: hidden;
-    background: #050508;
+    background: #030305;
 }
 
 /* HUD Overlay */
@@ -1125,7 +1152,7 @@ body, html {
     justify-content: space-between;
     align-items: center;
     padding: 16px 24px;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+    background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent);
     z-index: 10;
     position: absolute;
     top: 0;
@@ -1165,56 +1192,74 @@ body, html {
 }
 
 .layer-bg {
-    background-image: radial-gradient(circle at center, rgba(17, 17, 30, 0.5) 0%, rgba(5,5,8,0.9) 100%);
+    background-image: radial-gradient(circle at center, rgba(10, 10, 25, 0.4) 0%, rgba(3,3,5,0.95) 100%);
     z-index: 1;
+}
+
+/* Starfield Parallax */
+.layer-stars {
+    background-image: 
+        radial-gradient(circle, #fff 1px, transparent 1px),
+        radial-gradient(circle, #fff 1.5px, transparent 1.5px);
+    background-size: 240px 240px, 400px 400px;
+    background-position: 0 0, 50px 80px;
+    animation: starsScroll 35s linear infinite;
+    opacity: 0.35;
+    z-index: 2;
 }
 
 /* Cyber City Skyline */
 .layer-skyline {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='200' viewBox='0 0 100 200'%3E%3Cpath d='M0,200 L0,150 L10,150 L10,130 L25,130 L25,160 L40,160 L40,110 L60,110 L60,140 L75,140 L75,120 L90,120 L90,170 L100,170 L100,200 Z' fill='%230f0f18'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='200' viewBox='0 0 100 200'%3E%3Cpath d='M0,200 L0,150 L10,150 L10,130 L25,130 L25,160 L40,160 L40,110 L60,110 L60,140 L75,140 L75,120 L90,120 L90,170 L100,170 L100,200 Z' fill='%230b0b14' stroke='%2300f0ff' stroke-width='0.5'/%3E%3C/svg%3E");
     background-position: bottom left;
     background-size: 400px 300px;
-    bottom: 80px;
+    bottom: 120px;
     height: 300px;
-    z-index: 2;
-    opacity: 0.4;
-    animation: scrollBg 20s linear infinite;
+    z-index: 3;
+    opacity: 0.3;
+    animation: scrollBg 22s linear infinite;
 }
 
 .layer-grid {
-    background: linear-gradient(transparent, #07070c 80%, #0d1b2a 100%);
-    z-index: 3;
+    background: linear-gradient(transparent, #050508 70%, #08101a 100%);
+    z-index: 4;
 }
 
-/* Running Floor/Road */
+/* 3D PERSPECTIVE FLOOR GRID */
 .game-floor {
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 80px;
-    background: linear-gradient(180deg, hsl(190, 90%, 65%) 0%, #000 10%);
-    border-top: 2px solid hsl(190, 90%, 65%);
-    box-shadow: 0 -10px 20px rgba(0, 240, 255, 0.2);
+    height: 120px;
+    background: #000;
+    border-top: 3px solid hsl(190, 90%, 65%);
+    box-shadow: 0 -5px 25px rgba(0, 240, 255, 0.4);
     z-index: 5;
+    perspective: 120px;
+    overflow: hidden;
 }
 
 .floor-grid-lines {
     position: absolute;
-    top: 0;
-    left: 0;
+    top: -120%;
+    left: -50%;
     width: 200%;
-    height: 100%;
-    background-image: linear-gradient(90deg, rgba(0, 240, 255, 0.15) 1px, transparent 1px);
-    background-size: 60px 100%;
-    animation: scrollBg 2s linear infinite;
+    height: 350%;
+    background-image: 
+        linear-gradient(90deg, rgba(0, 240, 255, 0.25) 2px, transparent 2px),
+        linear-gradient(0deg, rgba(0, 240, 255, 0.25) 2px, transparent 2px);
+    background-size: 80px 80px;
+    transform: rotateX(68deg);
+    transform-origin: center center;
+    animation: gridScroll 1.2s linear infinite;
     z-index: 6;
 }
 
 /* Player Sprite container */
 .player-sprite {
     position: absolute;
-    bottom: 80px;
+    bottom: 100px;
     left: 100px;
     width: 64px;
     height: 64px;
@@ -1222,10 +1267,22 @@ body, html {
     display: flex;
     align-items: center;
     justify-content: center;
+    filter: drop-shadow(0 0 15px hsl(190, 90%, 65%)) drop-shadow(0 0 30px rgba(0, 240, 255, 0.2));
 }
 
 .player-sprite.running {
     animation: runWobble 0.4s ease-in-out infinite alternate;
+}
+
+.player-sprite.running::before {
+    content: '';
+    position: absolute;
+    left: -24px;
+    width: 20px;
+    height: 35px;
+    background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.35));
+    filter: blur(4px);
+    animation: trailPulse 0.4s infinite alternate;
 }
 
 .player-sprite.jumping {
@@ -1236,37 +1293,52 @@ body, html {
     animation: dashStretch 0.8s ease-in-out forwards;
 }
 
+.player-sprite.tripping {
+    animation: playerTrip 1.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
+    filter: drop-shadow(0 0 15px var(--brand-crimson)) drop-shadow(0 0 30px rgba(255, 0, 85, 0.4));
+    color: var(--brand-crimson) !important;
+}
+
 .runner-avatar {
     width: 100%;
     height: 100%;
-    filter: drop-shadow(0 0 10px hsl(190, 90%, 65%));
 }
 
 /* Oncoming Obstacle visual */
 .obstacle-sprite {
     position: absolute;
-    bottom: 80px;
+    bottom: 100px;
     right: 25%;
     width: 70px;
     height: 70px;
-    background: rgba(255, 0, 85, 0.2);
-    border: 2px solid hsl(340, 80%, 60%);
-    border-radius: 12px;
+    background: rgba(15, 15, 25, 0.9);
+    border: 2px solid;
+    border-radius: 16px;
     z-index: 8;
-    box-shadow: 0 0 15px hsl(340, 80%, 60%);
     display: flex;
     align-items: center;
     justify-content: center;
-    animation: obstaclePulse 1s infinite alternate;
+    transition: left 0.1s linear;
 }
 
-.obstacle-warn-tag {
-    font-size: 0.7rem;
-    font-weight: 800;
-    color: hsl(340, 80%, 60%);
-    text-shadow: 0 0 5px hsl(340, 80%, 60%);
-    text-transform: uppercase;
-    font-family: monospace;
+.obstacle-sprite svg {
+    animation: iconFloat 1.5s ease-in-out infinite alternate;
+}
+
+.obstacle-sprite.bug svg {
+    animation: bugVibrate 0.15s linear infinite;
+}
+
+.obstacle-sprite.wrench svg {
+    animation: wrenchSpin 3s linear infinite;
+}
+
+.obstacle-sprite.dialog svg {
+    animation: dialogPulse 1s ease-in-out infinite alternate;
+}
+
+.obstacle-sprite.barricade svg {
+    animation: barricadeShake 2s ease-in-out infinite alternate;
 }
 
 /* PROMPT OVERLAY MODAL */
@@ -1517,6 +1589,159 @@ textarea:focus {
 .neon-text-blue { color: hsl(190, 90%, 65%); }
 .neon-text-red { color: hsl(340, 80%, 60%); }
 
+/* CLASSIC BENTO WORKBENCH SPECIFIC STYLES */
+.crucible-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr 1fr;
+    gap: 24px;
+    flex: 1;
+    min-height: 0;
+}
 
+.glass-panel {
+    background: rgba(22, 27, 34, 0.4);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
 
+.panel h2 { margin-top: 0; font-size: 1.5rem; font-weight: 800; }
+.panel h3 { font-size: 1.1rem; color: #8b949e; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-top: 24px; font-weight: 600; }
 
+.gold-box {
+    background: rgba(0,0,0,0.5);
+    padding: 16px;
+    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+    border-left: 3px solid hsl(40, 90%, 60%);
+    line-height: 1.5;
+}
+
+.score-summary {
+    text-align: center;
+    margin-bottom: 24px;
+}
+.score-summary h2 {
+    font-size: 2rem;
+    margin-bottom: 12px;
+    font-weight: 800;
+}
+.cyber-feedback {
+    font-size: 0.9rem;
+    color: #ccc;
+    font-style: italic;
+}
+.metric-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #333;
+    font-size: 0.9rem;
+}
+
+/* ANIMATIONS */
+@keyframes scrollBg {
+    from { background-position-x: 0; }
+    to { background-position-x: -800px; }
+}
+
+@keyframes starsScroll {
+    from { background-position-x: 0, 0; }
+    to { background-position-x: -550px, -700px; }
+}
+
+@keyframes gridScroll {
+    from { background-position-y: 0; }
+    to { background-position-y: 80px; }
+}
+
+@keyframes runWobble {
+    0% { transform: translateY(0) rotate(-2deg); }
+    100% { transform: translateY(-4px) rotate(2deg); }
+}
+
+@keyframes trailPulse {
+    from { opacity: 0.2; transform: scaleY(0.8) skewX(-20deg); }
+    to { opacity: 0.7; transform: scaleY(1.15) skewX(-20deg); }
+}
+
+@keyframes jumpArc {
+    0% { transform: translateY(0); }
+    40% { transform: translateY(-120px) rotate(-12deg); }
+    60% { transform: translateY(-120px) rotate(-12deg); }
+    100% { transform: translateY(0); }
+}
+
+@keyframes dashStretch {
+    0% { transform: translateX(0) scaleX(1); }
+    20% { transform: translateX(120px) scaleX(1.4) scaleY(0.85); }
+    80% { transform: translateX(120px) scaleX(1.4) scaleY(0.85); }
+    100% { transform: translateX(0) scaleX(1); }
+}
+
+@keyframes playerTrip {
+    0% { transform: translateY(0) rotate(0deg); }
+    20% { transform: translateY(-30px) rotate(-90deg); }
+    40% { transform: translateY(20px) rotate(-180deg); }
+    60% { transform: translateY(40px) rotate(-270deg) scaleX(0.7); }
+    80% { transform: translateY(40px) rotate(-360deg) scaleX(0.7); }
+    100% { transform: translateY(0) rotate(-360deg); }
+}
+
+@keyframes obstaclePulse {
+    from { transform: scale(1); box-shadow: 0 0 10px; }
+    to { transform: scale(1.05); box-shadow: 0 0 25px; }
+}
+
+@keyframes iconFloat {
+    from { transform: translateY(0); }
+    to { transform: translateY(-8px); }
+}
+
+@keyframes bugVibrate {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    10% { transform: translate(-1px, -2px) rotate(-1deg); }
+    20% { transform: translate(-3px, 0px) rotate(1deg); }
+    30% { transform: translate(0px, 2px) rotate(0deg); }
+    40% { transform: translate(1px, -1px) rotate(1deg); }
+    50% { transform: translate(-1px, 2px) rotate(-1deg); }
+    60% { transform: translate(-3px, 1px) rotate(0deg); }
+    70% { transform: translate(2px, 1px) rotate(-1deg); }
+    80% { transform: translate(-1px, -1px) rotate(1deg); }
+    90% { transform: translate(2px, 2px) rotate(0deg); }
+    100% { transform: translate(1px, -2px) rotate(-1deg); }
+}
+
+@keyframes wrenchSpin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes dialogPulse {
+    from { transform: scale(1); filter: drop-shadow(0 0 5px); }
+    to { transform: scale(1.1); filter: drop-shadow(0 0 15px); }
+}
+
+@keyframes barricadeShake {
+    0%, 100% { transform: rotate(0); }
+    50% { transform: rotate(3deg); }
+}
+
+@keyframes modalSlideIn {
+    from { transform: translateY(50px) scale(0.95); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (max-width: 1000px) {
+    .crucible-grid { grid-template-columns: 1fr; }
+}

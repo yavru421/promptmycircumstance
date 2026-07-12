@@ -197,11 +197,24 @@ window.zlaInterop = {
         ctx.fillText('VERIFIED SYSTEM RUN: ' + dateStr, canvas.width / 2, 520);
         ctx.fillText('SECURE CONTAINER COMPLETED IN BROWSER MEMORY', canvas.width / 2, 545);
 
-        // Trigger Download
-        const dataUrl = canvas.toDataURL('image/png');
-        const link = document.createElement('a');
-        link.download = 'Prompt_Crucible_Certificate.png';
-        link.href = dataUrl;
-        link.click();
+        // Trigger PDF Download using jsPDF
+        try {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({
+                orientation: 'landscape',
+                unit: 'px',
+                format: [800, 600]
+            });
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            pdf.addImage(imgData, 'JPEG', 0, 0, 800, 600);
+            pdf.save('Prompt_Crucible_Certificate.pdf');
+        } catch (e) {
+            console.error('jsPDF error, falling back to PNG:', e);
+            const dataUrl = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = 'Prompt_Crucible_Certificate.png';
+            link.href = dataUrl;
+            link.click();
+        }
     }
 };

@@ -102,5 +102,9 @@ Implemented full glassmorphism bento-box design. Added prominent compile overlay
 - **Status**: Committed and pushed changes to main. Ready for Cloudflare Pages native build.
 
 
+## 2026-07-12 12:46:00 (Local Grading Fallback and Themed SVG Obstacles)
 
-
+- **Role**: Core Developer
+- **Action**: Implemented robust client-side fallback grading in `Index.razor.cs` and domain-themed SVG obstacles (bugs, barricades, wrenches, warning dialogs, checkered flag) in `Index.razor`.
+- **Goal**: Guarantee the user always receives their scorecard and certificate (even on server timeouts/errors), and make the visual runner gameplay significantly more impressive and distinct.
+- **Status**: Committed and pushed to main. Cloudflare Page CI building live.

@@ -64,7 +64,7 @@
                         </div>
                         <p class="cyber-feedback">@Result.TierFeedback</p>
                         
-                        @if (AnimationPercentage >= 100)
+                        @if (AnimationPercentage >= 100 && CurrentIndex == Challenges.Count - 1)
                         {
                             <button class="download-cert-btn animate-fade" @onclick="DownloadCertificate">
                                 Download Operator Certificate

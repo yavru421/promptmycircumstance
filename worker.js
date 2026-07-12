@@ -67,12 +67,16 @@ ACTUAL AI EXECUTION RESULT:
 TARGET GOLD STANDARD OUTCOME:
 "${goldStandard}"`;
 
-                const evaluationResponse = await env.AI.run("@cf/qwen/qwen3-30b-a3b-fp8", {
+                const evaluationResponse = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
                     messages: [
                         { role: "system", content: evaluationSystemPrompt },
                         { role: "user", content: evaluationUserMessage }
                     ]
                 });
+
+                if (!evaluationResponse || typeof evaluationResponse.response !== 'string') {
+                    throw new Error(`Invalid AI response: ${JSON.stringify(evaluationResponse)}`);
+                }
 
                 // Parse the JSON output returned by the judge model
                 let judgeText = evaluationResponse.response.trim();

@@ -86,3 +86,12 @@ Implemented full glassmorphism bento-box design. Added prominent compile overlay
 - **Status**: Implementation plan written. Awaiting user approval.
 
 
+## 2026-07-12 12:37:00 (Secure Connection Failed Troubleshooting)
+
+- **Role**: Lead AI Systems Architect
+- **Action**: Diagnosed Firefox/Waterfox ECH mismatch error `SSL_ERROR_ECH_RETRY_WITHOUT_ECH` for domain `pmc.dondlingergc.com`.
+- **Goal**: Help the operator resolve DNS/SSL propagation lag or local VPN caching issues.
+- **Status**: Provided direct workaround instructions to disable ECH in browser config or test via Chrome/Edge.
+
+
+

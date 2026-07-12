@@ -37,35 +37,35 @@ CRITICAL RULES:
                 // -------------------------------------------------------------
                 // PIPELINE STAGE 2: Real-World Resolution Judge (QwQ-32B)
                 // -------------------------------------------------------------
-                const evaluationSystemPrompt = `You are an expert calibrated AI judge assessing the quality of instructions given to an agent to solve a specific circumstance.
+                               const evaluationSystemPrompt = `You are an expert calibrated AI judge assessing the quality of the agent's output in resolving a specific circumstance.
 You will be provided with:
 - THE CIRCUMSTANCE (The raw observed symptom or problem)
 - OPERATOR PROMPT (The instruction written by the user)
 - ACTUAL AI EXECUTION RESULT (What the agent produced)
 - TARGET GOLD STANDARD OUTCOME (The expected result/resolution)
 
-Your goal is to evaluate the ACTUAL AI EXECUTION RESULT and grade how effectively the OPERATOR PROMPT guided the agent to achieve the TARGET GOLD STANDARD OUTCOME under the following three criteria.
+Your goal is to evaluate the ACTUAL AI EXECUTION RESULT and grade how effectively it directly resolves the CIRCUMSTANCE.
 
 You must respond in raw JSON format. Do not write any markdown codeblocks or conversational text. Return exactly this JSON structure:
 {
-  "failure_analysis": "<Analyze the ACTUAL RESULT against the GOLD STANDARD first. Detail mismatches here. If perfect, return 'None'>",
-  "actionability_score": <float between 0.00 and 1.00 indicating if the output contains a direct, immediately usable solution like executable code blocks, CLI commands, or direct physical workflows with zero translation needed>,
-  "constraint_adherence_score": <float between 0.00 and 1.00 indicating if the output strictly respected all parameters, dimensions, files, or environment constraints in the circumstance and prompt, with zero hallucinations>,
-  "target_alignment_score": <float between 0.00 and 1.00 indicating if the output directly resolves the specific symptom or goal described by the user>
+  "failure_analysis": "<Analyze if the ACTUAL RESULT successfully resolves the CIRCUMSTANCE. Detail any actual failures here. If it successfully resolves the problem, return 'None'>",
+  "actionability_score": <float between 0.00 and 1.00 indicating if the output contains a direct, immediately usable solution like code, commands, or clear workflows with zero translation needed>,
+  "constraint_adherence_score": <float between 0.00 and 1.00. If no specific files or variables were provided in the circumstance, DO NOT deduct points for the agent using logical hypothetical files/examples to demonstrate the solution. Only deduct if it violated explicit constraints>,
+  "target_alignment_score": <float between 0.00 and 1.00 indicating if the output logically resolves the specific symptom or goal described in the circumstance>
 }
 
 Example JSON Response:
 {
-  "failure_analysis": "The agent provided a Python script instead of a shell script.",
-  "actionability_score": 0.5,
-  "constraint_adherence_score": 0.0,
-  "target_alignment_score": 0.9
+  "failure_analysis": "None",
+  "actionability_score": 0.9,
+  "constraint_adherence_score": 1.0,
+  "target_alignment_score": 1.0
 }
 
-Be extremely strict:
-- If the ACTUAL RESULT contains conversational intro/outro filler (e.g. "Sure, I can help with that..."), deduct from the actionability_score.
-- If it hallucinated elements or ignored constraints (e.g. board sizes, directory limits), deduct heavily from constraint_adherence_score.
-- If it drifted semantically from solving the primary circumstance, deduct from target_alignment_score.`;
+Be fair and direct:
+- Score the ACTUAL AI EXECUTION RESULT based on its quality in resolving the circumstance.
+- If the circumstance is vague, praise the agent for using logical hypothetical files to illustrate the organization or solution.
+- Only deduct from target_alignment_score if the response fails to address the root problem.`;
 
                 const evaluationUserMessage = `THE CIRCUMSTANCE:
 "${rawTelemetry}"

@@ -54,13 +54,13 @@ namespace PromptMyCircumstance.Services
     public class BalancedCriteriaWeights
     {
         [JsonPropertyName("actionability")]
-        public double ActionabilityWeight { get; set; } = 40.0;
+        public double ActionabilityWeight { get; set; } = 50.0;
 
         [JsonPropertyName("constraint_adherence")]
-        public double ConstraintAdherenceWeight { get; set; } = 30.0;
+        public double ConstraintAdherenceWeight { get; set; } = 0.0;
 
         [JsonPropertyName("target_alignment")]
-        public double TargetAlignmentWeight { get; set; } = 30.0;
+        public double TargetAlignmentWeight { get; set; } = 50.0;
     }
 
     public class ProgrammaticValidationRules
@@ -115,8 +115,8 @@ namespace PromptMyCircumstance.Services
             var actionabilityScore = EvaluateActionability(payload, result, ref currentProgress);
             result.Metrics.Add(actionabilityScore);
 
-            var constraintScore = EvaluateConstraintAdherence(payload, result, ref currentProgress);
-            result.Metrics.Add(constraintScore);
+            // var constraintScore = EvaluateConstraintAdherence(payload, result, ref currentProgress);
+            // result.Metrics.Add(constraintScore);
 
             var alignmentScore = EvaluateTargetAlignment(payload, result, ref currentProgress);
             result.Metrics.Add(alignmentScore);

@@ -299,8 +299,56 @@ namespace PromptMyCircumstance.Pages
             }
             catch (Exception ex)
             {
-                ActivePhaseLogs.Add($"[BATCH FATAL] {ex.Message}");
-                Stage = GameStage.Setup;
+                ActivePhaseLogs.Add($"[BATCH WARNING] AI Grader unavailable: {ex.Message}. Falling back to programmatic matrix heuristics...");
+                StateHasChanged();
+                await Task.Delay(1500);
+
+                foreach (var challenge in ActiveChallenges)
+                {
+                    var rawPrompt = challenge.EvaluationSchema.EvaluatorInputs.RawPromptText ?? "";
+                    
+                    bool hasActionability = rawPrompt.Contains("```") || rawPrompt.Contains("run") || rawPrompt.Contains("calculate") || rawPrompt.Contains("write") || rawPrompt.Length > 20;
+                    double actionability = hasActionability ? 0.90 : 0.60;
+                    
+                    double alignment = Math.Min(1.0, 0.4 + (rawPrompt.Length / 100.0));
+                    
+                    challenge.EvaluationSchema.EvaluatorInputs.AiActionabilityScore = actionability;
+                    challenge.EvaluationSchema.EvaluatorInputs.AiTargetAlignmentScore = alignment;
+                    challenge.EvaluationSchema.EvaluatorInputs.AiFailureAnalysis = "Resolved via client-side matrix heuristic fallback.";
+                }
+
+                double totalScoreSum = 0;
+                foreach (var challenge in ActiveChallenges)
+                {
+                    var eval = Engine.Evaluate(challenge.EvaluationSchema);
+                    totalScoreSum += eval.TotalScore;
+                }
+
+                double averageScore = totalScoreSum / ActiveChallenges.Count;
+
+                FinalResult = new EvaluationResult
+                {
+                    TotalScore = averageScore
+                };
+
+                if (averageScore >= 90.0)
+                {
+                    FinalResult.OperatorTier = "S-Tier: Master Operator";
+                    FinalResult.TierFeedback = "Actionable, direct instruction. Zero translation needed, absolute constraint adherence.";
+                }
+                else if (averageScore >= 70.0)
+                {
+                    FinalResult.OperatorTier = "A-Tier: Capable Integrator";
+                    FinalResult.TierFeedback = "Correct resolution, but prompt required agent clarification or contained mild semantic drift.";
+                }
+                else
+                {
+                    FinalResult.OperatorTier = "B-Tier: Casual Informant";
+                    FinalResult.TierFeedback = "High risk of hallucination or non-actionable output. Refine parameters and specify clear outcome bounds.";
+                }
+
+                ActivePhaseLogs.Add("[BATCH] Local Fallback Evaluation Complete!");
+                Stage = GameStage.Finished;
             }
             finally
             {
@@ -329,6 +377,27 @@ namespace PromptMyCircumstance.Pages
             ActiveObstacleIndex = 0;
             ActiveChallenges.Clear();
             FinalResult = null;
+        }
+
+        private string GetObstacleColor(string domain)
+        {
+            if (string.IsNullOrEmpty(domain)) return "var(--brand-crimson)";
+            
+            if (domain.Contains("Code", StringComparison.OrdinalIgnoreCase) || 
+                domain.Contains("App", StringComparison.OrdinalIgnoreCase) || 
+                domain.Contains("System", StringComparison.OrdinalIgnoreCase))
+            {
+                return "var(--brand-accent)";
+            }
+            if (domain.Contains("Construction", StringComparison.OrdinalIgnoreCase))
+            {
+                return "var(--brand-amber)";
+            }
+            if (domain.Contains("Auto", StringComparison.OrdinalIgnoreCase))
+            {
+                return "var(--brand-emerald)";
+            }
+            return "var(--brand-crimson)";
         }
     }
 }

@@ -94,4 +94,13 @@ Implemented full glassmorphism bento-box design. Added prominent compile overlay
 - **Status**: Provided direct workaround instructions to disable ECH in browser config or test via Chrome/Edge.
 
 
+## 2026-07-12 12:41:00 (CSS Caching and Viewport Fix)
+
+- **Role**: Core Developer
+- **Action**: Fixed the broken layout on live load by migrating the horizontal runner styles to `wwwroot/css/app.css` and adding version cache-busters to `index.html`.
+- **Goal**: Force browser to reload the correct styling assets and constrain the stick figure size and game elements properly.
+- **Status**: Committed and pushed changes to main. Ready for Cloudflare Pages native build.
+
+
+
 

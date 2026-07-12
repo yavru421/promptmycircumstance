@@ -25,7 +25,7 @@ CRITICAL RULES:
 - ZERO conversational filler. ZERO intro/outro text.
 - Do not wrap the output in markdown unless explicitly requested.`;
                 
-                const executionResponse = await env.AI.run("@cf/meta/llama-4-scout-17b-16e-instruct", {
+                const executionResponse = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
                     messages: [
                         { role: "system", content: executionSystemPrompt },
                         { role: "user", content: `Raw Data:\n${rawTelemetry}\n\nOperator Instructions:\n${userPrompt}` }
@@ -79,7 +79,7 @@ ACTUAL AI EXECUTION RESULT:
 TARGET GOLD STANDARD OUTCOME:
 "${goldStandard}"`;
 
-                const evaluationResponse = await env.AI.run("@cf/qwen/qwq-32b", {
+                const evaluationResponse = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
                     messages: [
                         { role: "system", content: evaluationSystemPrompt },
                         { role: "user", content: evaluationUserMessage }

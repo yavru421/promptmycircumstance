@@ -1,4 +1,4 @@
-name = "prompt-my-circumstance"
+name = "promptmycircumstance"
 compatibility_date = "2024-05-26"
 main = "worker.js"
 

@@ -17,11 +17,15 @@ export default {
                 }
 
                 // -------------------------------------------------------------
-                // PIPELINE STAGE 1: Execution Sandbox (Llama-3.1-8B-FP8)
+                // PIPELINE STAGE 1: Execution Sandbox (Llama-4-Scout)
                 // -------------------------------------------------------------
-                const executionSystemPrompt = `You are a strict data processing node. You must process the raw data strictly adhering to the user's instructions. Do not provide any conversational filler or meta-commentary. Run the instruction exactly.`;
+                const executionSystemPrompt = `You are a strict, bare-metal execution node. Process the raw data strictly according to Operator Instructions. 
+CRITICAL RULES:
+- Output ONLY the direct resolution (code, commands, or data).
+- ZERO conversational filler. ZERO intro/outro text.
+- Do not wrap the output in markdown unless explicitly requested.`;
                 
-                const executionResponse = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fp8", {
+                const executionResponse = await env.AI.run("@cf/meta/llama-4-scout-17b-16e-instruct", {
                     messages: [
                         { role: "system", content: executionSystemPrompt },
                         { role: "user", content: `Raw Data:\n${rawTelemetry}\n\nOperator Instructions:\n${userPrompt}` }
@@ -31,7 +35,7 @@ export default {
                 const executionResult = executionResponse.response;
 
                 // -------------------------------------------------------------
-                // PIPELINE STAGE 2: Real-World Resolution Judge (Qwen-30B)
+                // PIPELINE STAGE 2: Real-World Resolution Judge (QwQ-32B)
                 // -------------------------------------------------------------
                 const evaluationSystemPrompt = `You are an expert calibrated AI judge assessing the quality of instructions given to an agent to solve a specific circumstance.
 You will be provided with:
@@ -44,10 +48,18 @@ Your goal is to evaluate the ACTUAL AI EXECUTION RESULT and grade how effectivel
 
 You must respond in raw JSON format. Do not write any markdown codeblocks or conversational text. Return exactly this JSON structure:
 {
+  "failure_analysis": "<Analyze the ACTUAL RESULT against the GOLD STANDARD first. Detail mismatches here. If perfect, return 'None'>",
   "actionability_score": <float between 0.00 and 1.00 indicating if the output contains a direct, immediately usable solution like executable code blocks, CLI commands, or direct physical workflows with zero translation needed>,
   "constraint_adherence_score": <float between 0.00 and 1.00 indicating if the output strictly respected all parameters, dimensions, files, or environment constraints in the circumstance and prompt, with zero hallucinations>,
-  "target_alignment_score": <float between 0.00 and 1.00 indicating if the output directly resolves the specific symptom or goal described by the user>,
-  "failure_analysis": "<Brief string explaining what was missing or incorrect. If it is a perfect match, return 'None'>"
+  "target_alignment_score": <float between 0.00 and 1.00 indicating if the output directly resolves the specific symptom or goal described by the user>
+}
+
+Example JSON Response:
+{
+  "failure_analysis": "The agent provided a Python script instead of a shell script.",
+  "actionability_score": 0.5,
+  "constraint_adherence_score": 0.0,
+  "target_alignment_score": 0.9
 }
 
 Be extremely strict:
@@ -67,7 +79,7 @@ ACTUAL AI EXECUTION RESULT:
 TARGET GOLD STANDARD OUTCOME:
 "${goldStandard}"`;
 
-                const evaluationResponse = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
+                const evaluationResponse = await env.AI.run("@cf/qwen/qwq-32b", {
                     messages: [
                         { role: "system", content: evaluationSystemPrompt },
                         { role: "user", content: evaluationUserMessage }

@@ -59,154 +59,174 @@ namespace PromptMyCircumstance.Pages
         [Inject]
         protected IJSRuntime JSRuntime { get; set; } = default!;
 
-        private List<ChallengePayload> Challenges = new();
-        private int CurrentIndex = 0;
-        private string UserPrompt = string.Empty;
-        private string ActualAiOutput = string.Empty;
+        public enum GameStage
+        {
+            Setup,
+            Running,
+            Prompting,
+            Evaluating,
+            Finished
+        }
 
-        private EvaluationResult? Result;
+        private List<ChallengePayload> Challenges = new();
+        private GameStage Stage = GameStage.Setup;
+        private int SelectedRunLength = 5;
+        private double Distance = 0;
+        private double TotalDistance = 1000;
+        private bool IsJumping = false;
+        private bool IsDashing = false;
+        private List<ChallengePayload> ActiveChallenges = new();
+        private int ActiveObstacleIndex = 0;
+        private string CurrentDirective = "";
+
         private EvaluationResult? FinalResult;
-        private int AnimationPercentage = 0;
         private List<string> ActivePhaseLogs = new();
         private bool IsRunning = false;
-        private bool IsTestGraded = false;
+
+        private ChallengePayload? ActiveObstacle => (ActiveChallenges != null && ActiveObstacleIndex >= 0 && ActiveObstacleIndex < ActiveChallenges.Count) ? ActiveChallenges[ActiveObstacleIndex] : null;
 
         protected override void OnInitialized()
         {
             Challenges = Library.GenerateChallenges();
-            ResetState();
         }
 
-        private void SaveCurrentState()
+        private void StartRun(int length)
         {
-            if (Challenges != null && CurrentIndex >= 0 && CurrentIndex < Challenges.Count)
-            {
-                var current = Challenges[CurrentIndex];
-                current.EvaluationSchema.EvaluatorInputs.RawPromptText = UserPrompt;
-                current.EvaluationSchema.EvaluatorInputs.CapturedOutputString = ActualAiOutput;
-            }
-        }
+            SelectedRunLength = length;
+            var rnd = new Random();
+            ActiveChallenges = Challenges.OrderBy(x => rnd.Next()).Take(length).ToList();
 
-        private void NextChallenge()
-        {
-            if (CurrentIndex < Challenges.Count - 1)
+            foreach (var c in ActiveChallenges)
             {
-                SaveCurrentState();
-                CurrentIndex++;
-                ResetState();
+                c.EvaluationSchema.EvaluatorInputs.RawPromptText = string.Empty;
+                c.EvaluationSchema.EvaluatorInputs.CapturedOutputString = string.Empty;
+                c.EvaluationSchema.EvaluatorInputs.AiActionabilityScore = 0;
+                c.EvaluationSchema.EvaluatorInputs.AiTargetAlignmentScore = 0;
+                c.EvaluationSchema.EvaluatorInputs.AiFailureAnalysis = string.Empty;
             }
-        }
 
-        private void PrevChallenge()
-        {
-            if (CurrentIndex > 0)
-            {
-                SaveCurrentState();
-                CurrentIndex--;
-                ResetState();
-            }
-        }
-
-        private void ResetState()
-        {
-            if (Challenges != null && Challenges.Count > CurrentIndex)
-            {
-                var current = Challenges[CurrentIndex];
-                UserPrompt = current.EvaluationSchema.EvaluatorInputs.RawPromptText;
-                ActualAiOutput = current.EvaluationSchema.EvaluatorInputs.CapturedOutputString;
-                
-                if (IsTestGraded)
-                {
-                    Result = Engine.Evaluate(current.EvaluationSchema);
-                    AnimationPercentage = 100;
-                }
-                else
-                {
-                    Result = null;
-                    AnimationPercentage = string.IsNullOrEmpty(ActualAiOutput) ? 0 : 100;
-                }
-            }
-            
+            Distance = 0;
+            ActiveObstacleIndex = 0;
+            CurrentDirective = "";
+            Stage = GameStage.Running;
             ActivePhaseLogs.Clear();
-            IsRunning = false;
+            FinalResult = null;
+
+            _ = RunGameLoop();
         }
 
-        private async Task RunLocalEvaluationLoop()
+        private async Task RunGameLoop()
         {
-            if (IsRunning) return;
-            IsRunning = true;
-            ActivePhaseLogs.Clear();
-            AnimationPercentage = 0;
-            ActualAiOutput = string.Empty;
-            Result = null;
-            
-            var current = Challenges[CurrentIndex];
-            
-            ActivePhaseLogs.Add("[API] Dispatching instruction payload to Cloudflare AI Worker...");
-            StateHasChanged();
-
-            try
+            while (Stage == GameStage.Running)
             {
-                var req = new AiRequestPayload 
-                { 
-                    UserPrompt = UserPrompt,
-                    RawTelemetry = current.RawTelemetryDump,
-                    GoldStandard = current.ReferenceGoldStandardAnswer
-                };
+                Distance += 10;
 
-                var res = await Http.PostAsJsonAsync("/api/generate", req);
-                var aiData = await res.Content.ReadFromJsonAsync<AiResponsePayload>();
-
-                if (!string.IsNullOrEmpty(aiData?.Error))
+                double targetDistance = TotalDistance;
+                if (ActiveObstacleIndex < ActiveChallenges.Count)
                 {
-                    ActivePhaseLogs.Add($"[API ERROR] {aiData.Error}");
-                    IsRunning = false;
-                    return;
+                    targetDistance = (ActiveObstacleIndex + 1) * (TotalDistance / (ActiveChallenges.Count + 1));
                 }
 
-                ActualAiOutput = aiData?.ExecutionResult ?? "";
-                
-                // Save execution results locally
-                current.EvaluationSchema.EvaluatorInputs.RawPromptText = UserPrompt;
-                current.EvaluationSchema.EvaluatorInputs.CapturedOutputString = ActualAiOutput;
+                if (Distance >= targetDistance)
+                {
+                    Distance = targetDistance;
+                    if (ActiveObstacleIndex < ActiveChallenges.Count)
+                    {
+                        PauseForObstacle();
+                    }
+                    else
+                    {
+                        await FinishRun();
+                    }
+                    break;
+                }
 
-                ActivePhaseLogs.Add("[API] Success. Decoupled execution complete.");
-                ActivePhaseLogs.Add("[INFO] Instruction Staged. Output recorded.");
                 StateHasChanged();
-                
-                // Animate progress up to 100% since execution is done
-                for (int p = 10; p <= 100; p += 30)
-                {
-                    AnimationPercentage = p;
-                    StateHasChanged();
-                    await Task.Delay(100);
-                }
-                AnimationPercentage = 100;
+                await Task.Delay(40);
             }
-            catch (Exception ex)
-            {
-                ActivePhaseLogs.Add($"[API FATAL] {ex.Message}");
-                IsRunning = false;
-                return;
-            }
-
-            IsRunning = false;
         }
 
-        private async Task SubmitBatchEvaluation()
+        private void PauseForObstacle()
         {
-            if (IsRunning) return;
+            CurrentDirective = "";
+            Stage = GameStage.Prompting;
+            StateHasChanged();
+        }
+
+        private async Task SubmitDirective()
+        {
+            if (string.IsNullOrWhiteSpace(CurrentDirective)) return;
+
+            if (ActiveObstacle != null)
+            {
+                ActiveObstacle.EvaluationSchema.EvaluatorInputs.RawPromptText = CurrentDirective;
+            }
+
+            var rnd = new Random();
+            if (rnd.Next(2) == 0)
+            {
+                IsJumping = true;
+            }
+            else
+            {
+                IsDashing = true;
+            }
+
+            StateHasChanged();
+            await Task.Delay(800);
+
+            IsJumping = false;
+            IsDashing = false;
+            ActiveObstacleIndex++;
+
+            Stage = GameStage.Running;
+            _ = RunGameLoop();
+        }
+
+        private async Task GenerateExecutionResultsInParallel()
+        {
+            ActivePhaseLogs.Add("[PROCESS] Running AI execution sandbox for all directives in parallel...");
+            StateHasChanged();
+
+            var tasks = ActiveChallenges.Select(async c => {
+                try
+                {
+                    var req = new AiRequestPayload
+                    {
+                        UserPrompt = c.EvaluationSchema.EvaluatorInputs.RawPromptText,
+                        RawTelemetry = c.RawTelemetryDump,
+                        GoldStandard = c.ReferenceGoldStandardAnswer
+                    };
+                    var res = await Http.PostAsJsonAsync("/api/generate", req);
+                    var aiData = await res.Content.ReadFromJsonAsync<AiResponsePayload>();
+                    c.EvaluationSchema.EvaluatorInputs.CapturedOutputString = aiData?.ExecutionResult ?? "";
+                }
+                catch (Exception ex)
+                {
+                    c.EvaluationSchema.EvaluatorInputs.CapturedOutputString = $"Execution Error: {ex.Message}";
+                }
+            }).ToList();
+
+            await Task.WhenAll(tasks);
+        }
+
+        private async Task FinishRun()
+        {
+            Stage = GameStage.Evaluating;
             IsRunning = true;
             ActivePhaseLogs.Clear();
-            ActivePhaseLogs.Add("[BATCH] Packaging all staged instructions for evaluation...");
             StateHasChanged();
-            
-            SaveCurrentState();
 
             try
             {
+                await GenerateExecutionResultsInParallel();
+
+                ActivePhaseLogs.Add("[BATCH] Packaging all directives for evaluation...");
+                StateHasChanged();
+                await Task.Delay(200);
+
                 var batchItems = new List<object>();
-                foreach (var c in Challenges)
+                foreach (var c in ActiveChallenges)
                 {
                     batchItems.Add(new
                     {
@@ -221,7 +241,6 @@ namespace PromptMyCircumstance.Pages
 
                 ActivePhaseLogs.Add("[BATCH] Dispatching matrix payload to AI Evaluator...");
                 StateHasChanged();
-                await Task.Delay(200);
 
                 var response = await Http.PostAsJsonAsync("/api/evaluate_batch", new { items = batchItems });
                 var batchRes = await response.Content.ReadFromJsonAsync<BatchEvaluationResponse>();
@@ -236,7 +255,7 @@ namespace PromptMyCircumstance.Pages
 
                 foreach (var score in batchRes.Results)
                 {
-                    var challenge = Challenges.FirstOrDefault(c => c.Id == score.ChallengeId);
+                    var challenge = ActiveChallenges.FirstOrDefault(c => c.Id == score.ChallengeId);
                     if (challenge != null)
                     {
                         challenge.EvaluationSchema.EvaluatorInputs.AiActionabilityScore = score.ActionabilityScore;
@@ -245,23 +264,20 @@ namespace PromptMyCircumstance.Pages
                     }
                 }
 
-                // Compute Final Overall Score
                 double totalScoreSum = 0;
-                foreach (var challenge in Challenges)
+                foreach (var challenge in ActiveChallenges)
                 {
                     var eval = Engine.Evaluate(challenge.EvaluationSchema);
                     totalScoreSum += eval.TotalScore;
                 }
-                
-                double averageScore = totalScoreSum / Challenges.Count;
-                
-                // Create a consolidated result
+
+                double averageScore = totalScoreSum / ActiveChallenges.Count;
+
                 FinalResult = new EvaluationResult
                 {
                     TotalScore = averageScore
                 };
-                
-                // Assign tier to FinalResult
+
                 if (averageScore >= 90.0)
                 {
                     FinalResult.OperatorTier = "S-Tier: Master Operator";
@@ -278,18 +294,19 @@ namespace PromptMyCircumstance.Pages
                     FinalResult.TierFeedback = "High risk of hallucination or non-actionable output. Refine parameters and specify clear outcome bounds.";
                 }
 
-                IsTestGraded = true;
                 ActivePhaseLogs.Add("[BATCH] Evaluation Complete!");
-                ResetState();
+                Stage = GameStage.Finished;
             }
             catch (Exception ex)
             {
                 ActivePhaseLogs.Add($"[BATCH FATAL] {ex.Message}");
-                IsRunning = false;
-                return;
+                Stage = GameStage.Setup;
             }
-
-            IsRunning = false;
+            finally
+            {
+                IsRunning = false;
+                StateHasChanged();
+            }
         }
 
         private string GetTierClass(double score)
@@ -303,6 +320,15 @@ namespace PromptMyCircumstance.Pages
         {
             if (FinalResult == null) return;
             await JSRuntime.InvokeVoidAsync("zlaInterop.downloadCertificate", FinalResult.OperatorTier, FinalResult.TotalScore.ToString("F1"), "Prompt My Circumstance Matrix", 5);
+        }
+
+        private void ResetToSetup()
+        {
+            Stage = GameStage.Setup;
+            Distance = 0;
+            ActiveObstacleIndex = 0;
+            ActiveChallenges.Clear();
+            FinalResult = null;
         }
     }
 }
